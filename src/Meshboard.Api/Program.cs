@@ -5,9 +5,11 @@ using Meshboard.Api.Services;
 using Meshboard.Core.Auth;
 using Meshboard.Core.Config;
 using Meshboard.Core.Domain;
+using Meshboard.Core.Sources;
 using Meshboard.Infrastructure.Auth;
 using Meshboard.Infrastructure.Database;
 using Meshboard.Infrastructure.Database.Providers;
+using Meshboard.Infrastructure.Sources;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -138,8 +140,11 @@ namespace Meshboard.Api
             builder.Services.AddAuthorization();
             
             builder.Services.AddScoped<IUserLoginService, UserLoginService>();
-            builder.Services.AddScoped<IUserProvider, UserProvider>();
             builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+            // Data providers
+            builder.Services.AddScoped<IUserProvider, UserProvider>();
+            builder.Services.AddScoped<ISourceProvider, SourceProvider>();
 
             builder.DetectAndInstallPlugins();
             builder.AddMeshboardDatabase();
