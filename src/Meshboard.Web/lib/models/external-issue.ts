@@ -8,6 +8,8 @@
     url?: string | null;
     assignee?: string | null;
     reporter?: string | null;
+    sourceColumn?: string | null;
+    boardColumnId?: string | null;
     createdAt?: string | null;
     updatedAt?: string | null;
     labels: string[];

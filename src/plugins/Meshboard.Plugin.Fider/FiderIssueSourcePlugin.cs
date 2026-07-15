@@ -109,8 +109,8 @@ namespace Meshboard.Plugin.Fider
 
             return new ExternalIssue
             {
-                ExternalId = $"{source.Id}:{issue.Id}",
-                SourceKey = source.ProviderKey,
+                ExternalId = issue.Id.ToString(),
+                SourceKey = source.Id.ToString(),
                 IssueNumber = issue.Number.ToString(),
                 Title = issue.Title,
                 Description = issue.Description,

@@ -194,7 +194,7 @@ export function KanbanBoard(
                 onDragOver={HandleDragOver}
                 onDragEnd={HandleDragEnd}
             >
-                <main className="flex h-full min-h-0 flex-col">
+                <main className="flex h-full min-h-0 flex-col overflow-y-auto">
                     <div className="mx-auto flex h-full min-h-0 w-full max-w-[1600px] flex-col px-6 py-6">
                         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                             <div className="space-y-1">

@@ -3,11 +3,13 @@ using Meshboard.Api.Conventions;
 using Meshboard.Api.Middleware;
 using Meshboard.Api.Services;
 using Meshboard.Core.Auth;
+using Meshboard.Core.Boards;
 using Meshboard.Core.Config;
 using Meshboard.Core.Domain;
 using Meshboard.Core.Issues;
 using Meshboard.Core.Sources;
 using Meshboard.Infrastructure.Auth;
+using Meshboard.Infrastructure.Boards;
 using Meshboard.Infrastructure.Database;
 using Meshboard.Infrastructure.Database.Providers;
 using Meshboard.Infrastructure.Issues;
@@ -150,6 +152,7 @@ namespace Meshboard.Api
             builder.Services.AddScoped<IUserProvider, UserProvider>();
             builder.Services.AddScoped<ISourceProvider, SourceProvider>();
             builder.Services.AddScoped<IExternalIssueProvider, ExternalIssueProvider>();
+            builder.Services.AddScoped<IBoardProvider, BoardProvider>();
 
             builder.DetectAndInstallPlugins();
             builder.AddMeshboardDatabase();

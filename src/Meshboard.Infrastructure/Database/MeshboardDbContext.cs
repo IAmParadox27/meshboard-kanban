@@ -22,6 +22,32 @@ namespace Meshboard.Infrastructure.Database
                 .OnDelete(DeleteBehavior.Cascade);
             
             modelBuilder.Entity<SourceDefinition>();
+
+            modelBuilder.Entity<BoardDefinition>();
+
+            modelBuilder.Entity<BoardSourceDefinition>()
+                .HasOne(x => x.Board)
+                .WithMany()
+                .HasForeignKey(x => x.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardSourceDefinition>()
+                .HasOne(x => x.Source)
+                .WithMany()
+                .HasForeignKey(x => x.SourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardIssueAssignment>()
+                .HasOne(x => x.Board)
+                .WithMany()
+                .HasForeignKey(x => x.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BoardIssueAssignment>()
+                .HasOne(x => x.Source)
+                .WithMany()
+                .HasForeignKey(x => x.SourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

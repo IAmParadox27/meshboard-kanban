@@ -21,7 +21,7 @@ export type KanbanCardModel = {
     number: string;
     title: string;
     description: string;
-    source: "github" | "fider" | "internal";
+    source: string;
     sourceLabel: string;
     status: "synced" | "pending" | "conflict" | "error";
     proxyMode: "import-only" | "export-only" | "two-way";

@@ -6,15 +6,15 @@ using Meshboard.Plugin.Sources;
 
 namespace Meshboard.Plugin.GitHub
 {
-    public class GitHubIssueSourcePlugin : IIssueSourcePlugin
+    public class GitHubProjectIssueSourcePlugin : IIssueSourcePlugin
     {
         private readonly IHttpClientFactory m_httpClientFactory;
 
-        public string SourceKey => "github";
+        public string SourceKey => "github-project";
         
-        public string DisplayName => "GitHub";
+        public string DisplayName => "GitHub Project";
 
-        public GitHubIssueSourcePlugin(IHttpClientFactory httpClientFactory)
+        public GitHubProjectIssueSourcePlugin(IHttpClientFactory httpClientFactory)
         {
             m_httpClientFactory = httpClientFactory;
         }
@@ -24,10 +24,10 @@ namespace Meshboard.Plugin.GitHub
             GitHubSourceConfig config = new GitHubSourceConfig
             {
                 Owner = GetRequiredConfig(source, "owner"),
-                Repository = GetRequiredConfig(source, "repository"),
+                ProjectId = GetRequiredConfig(source, "projectId"),
                 Token = GetOptionalConfig(source, "token"),
-                State = GetOptionalConfig(source, "state") ?? "open",
                 ColumnMappings = GetPrefixedConfig(source, "columnMappings."),
+                StatusFieldName = GetOptionalConfig(source, "statusFieldName"),
             };
 
             return config;
@@ -52,30 +52,30 @@ namespace Meshboard.Plugin.GitHub
                     },
                     new SourceConfigurationField
                     {
-                        Key = "repository",
-                        Label = "Repository",
+                        Key = "projectId",
+                        Label = "Project ID",
                         Type = "text",
                         Required = true,
                         Placeholder = "hello-world",
-                        HelpText = "Repository name."
+                        HelpText = "Project name."
+                    },
+                    new SourceConfigurationField
+                    {
+                        Key = "statusFieldName",
+                        Label = "Status Field Name",
+                        Type = "text",
+                        Required = true,
+                        Placeholder = "Status",
+                        HelpText = "Name of the field used to store issue status."
                     },
                     new SourceConfigurationField
                     {
                         Key = "token",
                         Label = "Personal Access Token",
                         Type = "password",
-                        Required = false,
+                        Required = true,
                         Placeholder = "",
-                        HelpText = "Optional for public repos. Needed for private repos or higher rate limits."
-                    },
-                    new SourceConfigurationField
-                    {
-                        Key = "state",
-                        Label = "State",
-                        Type = "text",
-                        Required = false,
-                        Placeholder = "open",
-                        HelpText = "Optional. open, closed, or all. Defaults to open."
+                        HelpText = "Access token with permission to query the project."
                     }
                 ]
             };
@@ -100,13 +100,15 @@ namespace Meshboard.Plugin.GitHub
             }
             
             string requestPath =
-                $"repos/{Uri.EscapeDataString(config.Owner)}/{Uri.EscapeDataString(config.Repository)}/issues?state={Uri.EscapeDataString(config.State)}&per_page=100";
+                $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/items?per_page=5000&fields[]=Status";
 
-            List<GitHubIssueResponse>? issues = null;
+            List<GitHubProjectResponse>? issues = null;
 
             try
             {
-                issues = await client.GetFromJsonAsync<List<GitHubIssueResponse>>(
+                string rawJson = await client.GetStringAsync(requestPath, cancellationToken);
+                
+                issues = await client.GetFromJsonAsync<List<GitHubProjectResponse>>(
                     requestPath,
                     cancellationToken);
             }
@@ -120,36 +122,42 @@ namespace Meshboard.Plugin.GitHub
             }
             
             return issues
-                .Where(x => x.PullRequest == null)
+                .Where(x => x.Issue?.PullRequest == null)
                 .Select(x => MapIssue(source, config, x))
                 .ToArray();
         }
         
         private ExternalIssue MapIssue(SourceDefinitionModel source,
             GitHubSourceConfig config,
-            GitHubIssueResponse issue)
+            GitHubProjectResponse project)
         {
-            string sourceColumn = issue.State;
+            GitHubFieldSingleSelectResponse? statusField = project.Fields?
+                .Where(f => f.DataType == "single_select")
+                .Where(x => x.Name == config.StatusFieldName)
+                .Select(f => f.Value?.AsObject().GetValue<GitHubFieldSingleSelectResponse>())
+                .FirstOrDefault();
+            
+            string sourceColumn = statusField?.Name?.Raw ?? "Unknown";
             
             return new ExternalIssue
             {
-                ExternalId = issue.Id.ToString(),
+                ExternalId = project.Issue?.Id.ToString() ?? "No issue id",
                 SourceKey = source.Id.ToString(),
-                IssueNumber = issue.Number.ToString(),
-                Title = issue.Title,
-                Description = issue.Body,
-                Status = sourceColumn,
+                IssueNumber = project.Issue?.Number.ToString() ?? "No issue number",
+                Title = project.Issue?.Title ?? "No title",
+                Description = project.Issue?.Body,
+                Status = sourceColumn ?? "Unknown",
                 SourceColumn = sourceColumn,
-                BoardColumnId = GetMappedBoardColumn(config.ColumnMappings, sourceColumn),
-                Url = issue.HtmlUrl ?? $"https://github.com/{config.Owner}/{config.Repository}/issues/{issue.Number}",
-                Assignee = issue.Assignee?.Login,
-                Reporter = issue.User?.Login,
-                CreatedAt = issue.CreatedAt,
-                UpdatedAt = issue.UpdatedAt,
-                Labels = issue.Labels
+                BoardColumnId = GetMappedBoardColumn(config.ColumnMappings, sourceColumn ?? "Unknown"),
+                Url = project.Issue?.HtmlUrl ?? $"https://github.com/{config.Owner}/{config.Repository}/issues/{project.Issue?.Number}",
+                Assignee = project.Issue?.Assignee?.Login,
+                Reporter = project.Issue?.User?.Login,
+                CreatedAt = project.Issue?.CreatedAt,
+                UpdatedAt = project.Issue?.UpdatedAt,
+                Labels = project.Issue?.Labels?
                     .Where(x => !string.IsNullOrWhiteSpace(x.Name))
                     .Select(x => x.Name)
-                    .ToArray(),
+                    .ToArray() ?? Array.Empty<string>(),
             };
         }
 

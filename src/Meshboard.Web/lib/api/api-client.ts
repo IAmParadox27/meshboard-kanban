@@ -1,9 +1,60 @@
-﻿import { SourceSummaryModel } from "@/lib/models/source";
-import { ExternalIssueModel } from "@/lib/models/external-issue";
-import {SourceDefinitionModel, SourcesPageModel, UpsertSourceDefinitionRequest} from "@/lib/models/sources-models";
+﻿import { ExternalIssueModel } from "@/lib/models/external-issue";
+import {
+    SourceDefinitionModel,
+    SourcesPageModel,
+    UpsertSourceDefinitionRequest,
+} from "@/lib/models/sources-models";
+import {
+    BoardDefinitionModel,
+    BoardDetailsModel,
+    BoardsPageModel,
+    BoardIssueAssignmentRequest,
+    UpsertBoardDefinitionRequest,
+} from "@/lib/models/boards-models";
 
 export class ApiClient
 {
+    public async GetBoardsPage(): Promise<BoardsPageModel>
+    {
+        return await this.Get<BoardsPageModel>("/api/boards");
+    }
+
+    public async GetBoard(boardId: string): Promise<BoardDetailsModel>
+    {
+        return await this.Get<BoardDetailsModel>(`/api/boards/${boardId}`);
+    }
+
+    public async CreateBoard(request: UpsertBoardDefinitionRequest): Promise<BoardDefinitionModel>
+    {
+        return await this.Send<BoardDefinitionModel>("/api/boards", "POST", request);
+    }
+
+    public async UpdateBoard(id: string, request: UpsertBoardDefinitionRequest): Promise<BoardDefinitionModel>
+    {
+        return await this.Send<BoardDefinitionModel>(`/api/boards/${id}`, "PUT", request);
+    }
+
+    public async DeleteBoard(id: string): Promise<void>
+    {
+        await this.Send<void>(`/api/boards/${id}`, "DELETE");
+    }
+
+    public async AddIssueToBoard(
+        boardId: string,
+        request: BoardIssueAssignmentRequest,
+    ): Promise<void>
+    {
+        await this.Send<void>(`/api/boards/${boardId}/issues`, "POST", request);
+    }
+
+    public async RemoveIssueFromBoard(
+        boardId: string,
+        request: BoardIssueAssignmentRequest,
+    ): Promise<void>
+    {
+        await this.Send<void>(`/api/boards/${boardId}/issues`, "DELETE", request);
+    }
+
     public async GetSourcesPage(): Promise<SourcesPageModel>
     {
         return await this.Get<SourcesPageModel>("/api/sources");

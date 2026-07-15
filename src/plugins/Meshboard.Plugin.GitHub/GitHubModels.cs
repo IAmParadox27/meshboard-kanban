@@ -1,7 +1,68 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Meshboard.Plugin.GitHub
 {
+    public class GitHubProjectResponse
+    {
+        [JsonPropertyName("id")]
+        public long Id { get; set; }
+        
+        [JsonPropertyName("content")]
+        public GitHubIssueResponse? Issue { get; set; }
+        
+        [JsonPropertyName("requested_reviewers")]
+        public List<GitHubUserResponse> RequestedReviewers { get; set; } = new();
+        
+        [JsonPropertyName("creator")]
+        public GitHubUserResponse Creator { get; set; } = new();
+        
+        [JsonPropertyName("item_url")]
+        public string? ItemUrl { get; set; }
+        
+        [JsonPropertyName("fields")]
+        public List<GitHubFieldResponse> Fields { get; set; } = new();
+    }
+
+    public class GitHubFieldResponse
+    {
+        [JsonPropertyName("id")]
+        public long Id { get; set; }
+        
+        [JsonPropertyName("data_type")]
+        public string DataType { get; set; } = string.Empty;
+        
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        
+        [JsonPropertyName("value")]
+        public JsonNode? Value { get; set; }
+    }
+
+    public class GitHubFieldSingleSelectResponse
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
+        
+        [JsonPropertyName("name")]
+        public GitHubFieldSingleSelectValueResponse? Name { get; set; }
+        
+        [JsonPropertyName("color")]
+        public string Color { get; set; } = string.Empty;
+        
+        [JsonPropertyName("description")]
+        public GitHubFieldSingleSelectValueResponse? Description { get; set; }
+    }
+
+    public class GitHubFieldSingleSelectValueResponse
+    {
+        [JsonPropertyName("raw")]
+        public string Raw { get; set; } = string.Empty;
+        
+        [JsonPropertyName("html")]
+        public string Html { get; set; } = string.Empty;
+    }
+    
     public class GitHubIssueResponse
     {
         [JsonPropertyName("id")]

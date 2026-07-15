@@ -26,7 +26,16 @@ function ToUser(name?: string | null): KanbanUserModel | undefined
     };
 }
 
-function ToColumnId(status: string): string
+function SlugifyColumnId(value: string): string
+{
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
+function ToFallbackColumnId(status: string): string
 {
     switch (status.toLowerCase())
     {
@@ -45,41 +54,48 @@ function ToColumnId(status: string): string
         case "resolved":
             return "done";
 
-        default:
-            return "todo";
+        default:return "todo";
     }
+}
+
+function ToColumnId(issue: ExternalIssueModel): string
+{
+    if (issue.boardColumnId && issue.boardColumnId.trim().length > 0)
+    {
+        return SlugifyColumnId(issue.boardColumnId);
+    }
+
+    if (issue.sourceColumn && issue.sourceColumn.trim().length > 0)
+    {
+        return SlugifyColumnId(issue.sourceColumn);
+    }
+
+    return ToFallbackColumnId(issue.status);
 }
 
 function ToColumnTitle(columnId: string): string
 {
-    switch (columnId)
-    {
-        case "todo":
-            return "To do";
-
-        case "in-progress":
-            return "In progress";
-
-        case "done":
-            return "Done";
-
-        default:
-            return columnId;
-    }
+    return columnId
+        .split("-")
+        .filter((x) => x.length > 0)
+        .map((x) => x[0]!.toUpperCase() + x.slice(1))
+        .join(" ");
 }
 
 function ToCard(issue: ExternalIssueModel): KanbanCardModel
 {
+    const source = issue.sourceKey.toLowerCase().includes("github")
+        ? "github"
+        : issue.sourceKey.toLowerCase().includes("fider")
+            ? "fider"
+            : "internal";
+
     return {
-        id: issue.externalId,
+        id: `${issue.sourceKey}:${issue.externalId}`,
         number: issue.issueNumber,
         title: issue.title,
         description: issue.description ?? "No description provided.",
-        source: issue.sourceKey == "github"
-            ? "github"
-            : issue.sourceKey == "fider"
-                ? "fider"
-                : "internal",
+        source,
         sourceLabel: issue.sourceKey,
         status: "synced",
         proxyMode: "import-only",
@@ -96,19 +112,23 @@ function ToCard(issue: ExternalIssueModel): KanbanCardModel
     };
 }
 
-export function MapIssuesToBoard(issues: ExternalIssueModel[]): KanbanBoardModel {
-    const columnOrder = ["todo", "in-progress", "done"];
-
+export function MapIssuesToBoard(
+    title: string,
+    description: string,
+    issues: ExternalIssueModel[],
+): KanbanBoardModel
+{
     const groupedCards = issues.reduce<Record<string, KanbanCardModel[]>>((accumulator, issue) => {
-        const columnId = ToColumnId(issue.status);
+        const columnId = ToColumnId(issue);
 
-        if (!accumulator[columnId]) {
+        if (!accumulator[columnId])
+        {
             accumulator[columnId] = [];
-        }
-
-        accumulator[columnId].push(ToCard(issue));
+        }accumulator[columnId].push(ToCard(issue));
         return accumulator;
     }, {});
+
+    const columnOrder = Object.keys(groupedCards).sort((a, b) => a.localeCompare(b));
 
     const columns: KanbanColumnModel[] = columnOrder.map((columnId) => ({
         id: columnId,
@@ -117,8 +137,8 @@ export function MapIssuesToBoard(issues: ExternalIssueModel[]): KanbanBoardModel
     }));
 
     return {
-        title: "Board",
-        description: "Live issues pulled from configured sources.",
+        title,
+        description,
         columns,
     };
 }

@@ -1,6 +1,6 @@
-﻿import { KanbanBoardView } from "@/components/kanban/kanban-board-view";
+﻿import { redirect } from "next/navigation";
 
 export default function Home()
 {
-    return <KanbanBoardView />;
+    redirect("/boards");
 }

@@ -17,7 +17,7 @@ type AppHeaderProps = {
 
 const navigationItems = [
     {
-        href: "/",
+        href: "/boards",
         label: "Board",
     },
     {
@@ -41,7 +41,7 @@ export function AppHeader(
             <div className="mx-auto flex w-full max-w-[1600px] items-center gap-4 px-6 py-4">
                 <div className="flex min-w-0 items-center gap-6">
                     <Link
-                        href="/"
+                        href="/boards"
                         className="shrink-0 text-lg font-semibold tracking-tight"
                     >
                         {title}
