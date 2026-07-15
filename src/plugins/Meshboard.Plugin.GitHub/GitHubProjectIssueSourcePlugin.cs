@@ -100,7 +100,7 @@ namespace Meshboard.Plugin.GitHub
             }
             
             string requestPath =
-                $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/items?per_page=5000&fields[]=Status";
+                $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/items?per_page=5000&fields[]=216566350&fields[]=216566302";
 
             List<GitHubProjectResponse>? issues = null;
 

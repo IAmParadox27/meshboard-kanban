@@ -175,6 +175,7 @@ namespace Meshboard.Infrastructure.Boards
                     cancellationToken),
 
                 BoardMode.Unassigned => await GetUnassignedBoardIssuesAsync(
+                    board,
                     allIssues,
                     cancellationToken),
 
@@ -278,10 +279,21 @@ namespace Meshboard.Infrastructure.Boards
             return allIssues
                 .Where(x => assignedKeys.Contains(ToAssignmentKey(x.SourceKey, x.ExternalId)))
                 .ToArray();
-        }private async Task<IReadOnlyList<ExternalIssue>> GetUnassignedBoardIssuesAsync(
+        }
+        
+        private async Task<IReadOnlyList<ExternalIssue>> GetUnassignedBoardIssuesAsync(
+            BoardDefinitionModel board,
             IReadOnlyList<ExternalIssue> allIssues,
             CancellationToken cancellationToken)
         {
+            HashSet<string> allowedSourceIds = board.SourceIds
+                .Select(x => x.ToString())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            IReadOnlyList<ExternalIssue> sourceScopedIssues = allIssues
+                .Where(x => allowedSourceIds.Contains(x.SourceKey))
+                .ToArray();
+            
             Guid[] curatedBoardIds = await m_dbContext
                 .Set<BoardDefinition>()
                 .Where(x => x.Enabled && x.Mode == BoardMode.Curated)
@@ -294,7 +306,7 @@ namespace Meshboard.Infrastructure.Boards
                 .Select(x => $"{x.SourceId:N}:{x.ExternalId}")
                 .ToHashSetAsync(cancellationToken);
 
-            return allIssues
+            return sourceScopedIssues
                 .Where(x => !assignedKeys.Contains(ToAssignmentKey(x.SourceKey, x.ExternalId)))
                 .ToArray();
         }

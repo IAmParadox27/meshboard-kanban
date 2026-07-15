@@ -11,13 +11,29 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Markdown } from "@/components/ui/markdown";
-
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { KanbanCardModel } from "./kanban-types";
+
+type CuratedBoardActionModel = {
+    id: string;
+    name: string;
+};
 
 type KanbanCardDetailsSheetProps = {
     card: KanbanCardModel | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    canRemoveFromCurrentBoard: boolean;
+    curatedBoards: CuratedBoardActionModel[];
+    isSavingBoardAssignment: boolean;
+    onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
+    onRemoveFromCurrentBoard: (card: KanbanCardModel) => void;
 };
 
 const sourceClassNames: Record<KanbanCardModel["source"], string> = {
@@ -44,6 +60,11 @@ export function KanbanCardDetailsSheet(
         card,
         open,
         onOpenChange,
+        canRemoveFromCurrentBoard,
+        curatedBoards,
+        isSavingBoardAssignment,
+        onAddToBoard,
+        onRemoveFromCurrentBoard,
     }: KanbanCardDetailsSheetProps,
 )
 {
@@ -258,6 +279,55 @@ export function KanbanCardDetailsSheet(
                                                 </p>
                                             )}
                                         </div>
+                                    </div>
+                                </section>
+
+                                <section className="space-y-3 rounded-lg border bg-card p-4">
+                                    <h3 className="text-sm font-semibold">
+                                        Board actions
+                                    </h3>
+
+                                    <div className="flex flex-col gap-2">
+                                        {canRemoveFromCurrentBoard && card ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                disabled={isSavingBoardAssignment}
+                                                onClick={() => onRemoveFromCurrentBoard(card)}
+                                            >
+                                                Remove from this board
+                                            </Button>
+                                        ) : null}
+
+                                        {card ? (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        type="button"
+                                                        disabled={isSavingBoardAssignment || curatedBoards.length === 0}
+                                                    >
+                                                        Add to board
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+
+                                                <DropdownMenuContent align="start" className="w-64">
+                                                    {curatedBoards.map((board) => (
+                                                        <DropdownMenuItem
+                                                            key={board.id}
+                                                            onClick={() => onAddToBoard(board.id, card)}
+                                                        >
+                                                            {board.name}
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        ) : null}
+
+                                        {curatedBoards.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                No curated boards available yet.
+                                            </p>
+                                        ) : null}
                                     </div>
                                 </section>
 

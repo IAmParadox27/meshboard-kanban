@@ -21,8 +21,7 @@ function ToUser(name?: string | null): KanbanUserModel | undefined
         .join("");
 
     return {
-        name,
-        initials: initials || "?",
+        name,initials: initials || "?",
     };
 }
 
@@ -54,7 +53,8 @@ function ToFallbackColumnId(status: string): string
         case "resolved":
             return "done";
 
-        default:return "todo";
+        default:
+            return "todo";
     }
 }
 
@@ -82,21 +82,38 @@ function ToColumnTitle(columnId: string): string
         .join(" ");
 }
 
-function ToCard(issue: ExternalIssueModel): KanbanCardModel
+function ToSourceKind(sourceLabel: string): string
 {
-    const source = issue.sourceKey.toLowerCase().includes("github")
-        ? "github"
-        : issue.sourceKey.toLowerCase().includes("fider")
-            ? "fider"
-            : "internal";
+    const normalized = sourceLabel.toLowerCase();
+
+    if (normalized.includes("github"))
+    {
+        return "github";
+    }
+
+    if (normalized.includes("fider"))
+    {
+        return "fider";
+    }
+
+    return "internal";
+}
+
+function ToCard(
+    issue: ExternalIssueModel,
+    sourceNameById: Record<string, string>,
+): KanbanCardModel
+{
+    const sourceLabel = sourceNameById[issue.sourceKey] ?? issue.sourceKey;
 
     return {
         id: `${issue.sourceKey}:${issue.externalId}`,
+        sourceId: issue.sourceKey,
+        externalId: issue.externalId,
         number: issue.issueNumber,
-        title: issue.title,
-        description: issue.description ?? "No description provided.",
-        source,
-        sourceLabel: issue.sourceKey,
+        title: issue.title,description: issue.description ?? "No description provided.",
+        source: ToSourceKind(sourceLabel),
+        sourceLabel,
         status: "synced",
         proxyMode: "import-only",
         assignee: ToUser(issue.assignee),
@@ -116,15 +133,16 @@ export function MapIssuesToBoard(
     title: string,
     description: string,
     issues: ExternalIssueModel[],
-): KanbanBoardModel
-{
+    sourceNameById: Record<string, string> = {},
+): KanbanBoardModel {
     const groupedCards = issues.reduce<Record<string, KanbanCardModel[]>>((accumulator, issue) => {
         const columnId = ToColumnId(issue);
 
-        if (!accumulator[columnId])
-        {
+        if (!accumulator[columnId]) {
             accumulator[columnId] = [];
-        }accumulator[columnId].push(ToCard(issue));
+        }
+
+        accumulator[columnId].push(ToCard(issue, sourceNameById));
         return accumulator;
     }, {});
 

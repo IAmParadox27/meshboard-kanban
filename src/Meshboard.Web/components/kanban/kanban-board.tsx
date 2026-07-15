@@ -19,15 +19,31 @@ import { Button } from "@/components/ui/button";
 import { KanbanCard } from "./kanban-card";
 import { KanbanCardDetailsSheet } from "./kanban-card-details-sheet";
 import { KanbanColumn } from "./kanban-column";
-import { KanbanBoardModel, KanbanColumnModel } from "./kanban-types";
+import {KanbanBoardModel, KanbanCardModel, KanbanColumnModel} from "./kanban-types";
 
-type KanbanBoardProps = KanbanBoardModel;
+type KanbanBoardProps = KanbanBoardModel & {
+    curatedBoards: CuratedBoardActionModel[];
+    canRemoveFromCurrentBoard: boolean;
+    isSavingBoardAssignment: boolean;
+    onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
+    onRemoveFromCurrentBoard: (card: KanbanCardModel) => void;
+};
+
+type CuratedBoardActionModel = {
+    id: string;
+    name: string;
+};
 
 export function KanbanBoard(
     {
         title,
         description,
         columns,
+        curatedBoards,
+        canRemoveFromCurrentBoard,
+        isSavingBoardAssignment,
+        onAddToBoard,
+        onRemoveFromCurrentBoard,
     }: KanbanBoardProps,
 ) {
     const [m_columns, setColumns] = useState<KanbanColumnModel[]>(columns);
@@ -247,10 +263,16 @@ export function KanbanBoard(
                 card={m_selectedCard}
                 open={m_selectedCard != null}
                 onOpenChange={(open) => {
-                    if (!open) {
+                    if (!open)
+                    {
                         setSelectedCardId(null);
                     }
                 }}
+                curatedBoards={curatedBoards}
+                canRemoveFromCurrentBoard={canRemoveFromCurrentBoard}
+                isSavingBoardAssignment={isSavingBoardAssignment}
+                onAddToBoard={onAddToBoard}
+                onRemoveFromCurrentBoard={onRemoveFromCurrentBoard}
             />
         </>
     );

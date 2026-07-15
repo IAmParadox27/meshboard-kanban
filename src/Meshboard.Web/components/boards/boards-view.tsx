@@ -108,9 +108,9 @@ export function BoardsView()
                 name: m_editor.name,
                 mode: m_editor.mode,
                 enabled: m_editor.enabled,
-                sourceIds: m_editor.mode === BoardModes.DirectFromSources
-                    ? m_editor.sourceIds
-                    : [],
+                sourceIds: m_editor.mode === BoardModes.Curated
+                    ? []
+                    : m_editor.sourceIds,
             };
 
             if (m_editor.boardId)
@@ -239,7 +239,7 @@ export function BoardsView()
                     </label>
                 </div>
 
-                {m_editor.mode === BoardModes.DirectFromSources ? (
+                {m_editor.mode !== BoardModes.Curated ? (
                     <div className="mt-6 space-y-3">
                         <h3 className="text-sm font-medium">
                             Sources
