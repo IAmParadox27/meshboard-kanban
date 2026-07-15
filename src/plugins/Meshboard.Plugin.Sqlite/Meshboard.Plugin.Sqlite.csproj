@@ -1,0 +1,66 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        
+        <PluginName>$(AssemblyName)</PluginName>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Meshboard.Plugin\Meshboard.Plugin.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="plugin_output_dir.txt" />
+    </ItemGroup>
+    
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="$([System.IO.File]::Exists('plugin_output_dir.txt'))">
+        <ReadLinesFromFile File="$(MSBuildProjectDirectory)\plugin_output_dir.txt">
+            <Output TaskParameter="Lines" ItemName="_PluginOutputDirLine" />
+        </ReadLinesFromFile>
+
+        <PropertyGroup>
+            <PluginOutputDir>@(_PluginOutputDirLine)</PluginOutputDir>
+            <PluginOutputDir>$([System.String]::Copy('$(PluginOutputDir)').Trim())</PluginOutputDir>
+            <PluginDestinationDir>$([System.IO.Path]::Combine('$(PluginOutputDir)', 'plugins', '$(AssemblyName)'))</PluginDestinationDir>
+        </PropertyGroup>
+
+        <MakeDir Directories="$(PluginDestinationDir)" />
+
+        <ItemGroup>
+            <_PluginOutputFiles Include="$(TargetDir)$(AssemblyName).*" />
+
+            <_PluginOutputFiles Include="@(ReferenceCopyLocalPaths)"
+                                Condition="
+                            '%(ReferenceCopyLocalPaths.Extension)' == '.dll'
+                            and (
+                                '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.EntityFrameworkCore.Sqlite.Core'
+                                or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.Data.Sqlite.Core'
+                                or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'SQLitePCLRaw.core'
+                                or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'SQLitePCLRaw.provider.e_sqlite3'
+                                or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'SQLitePCLRaw.bundle_e_sqlite3'
+                            )
+                        " />
+
+            <_PluginNativeFiles Include="$(TargetDir)runtimes\**\native\e_sqlite3.dll" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(_PluginOutputFiles)"
+              DestinationFolder="$(PluginDestinationDir)"
+              SkipUnchangedFiles="true" />
+        
+        <Copy SourceFiles="@(_PluginNativeFiles)"
+              DestinationFiles="@(_PluginNativeFiles->'$(PluginDestinationDir)\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
+              SkipUnchangedFiles="true" />
+        
+        <Message Importance="high"
+                 Text="Copied plugin output to: $(PluginDestinationDir)" />
+    </Target>
+</Project>

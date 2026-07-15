@@ -1,0 +1,45 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meshboard.Api", "Meshboard.Api\Meshboard.Api.csproj", "{D077EA26-0E94-4FAA-BF75-86B23CA13D07}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meshboard.Plugin", "Meshboard.Plugin\Meshboard.Plugin.csproj", "{92EB9F7C-433E-47DE-BB99-AD8184FF7F73}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meshboard.Core", "Meshboard.Core\Meshboard.Core.csproj", "{8651FF66-4834-476A-8216-74EFDDD88CDD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meshboard.Infrastructure", "Meshboard.Infrastructure\Meshboard.Infrastructure.csproj", "{0EAB54AB-DAAD-4B64-985F-C3DA4F373249}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{492594D1-CFAC-4B93-A906-FE2F6781BD11}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Meshboard.Plugin.Sqlite", "plugins\Meshboard.Plugin.Sqlite\Meshboard.Plugin.Sqlite.csproj", "{E7F5F411-BE81-4B18-BED2-A8D50823AEA5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D077EA26-0E94-4FAA-BF75-86B23CA13D07}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D077EA26-0E94-4FAA-BF75-86B23CA13D07}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D077EA26-0E94-4FAA-BF75-86B23CA13D07}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D077EA26-0E94-4FAA-BF75-86B23CA13D07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{92EB9F7C-433E-47DE-BB99-AD8184FF7F73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{92EB9F7C-433E-47DE-BB99-AD8184FF7F73}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{92EB9F7C-433E-47DE-BB99-AD8184FF7F73}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{92EB9F7C-433E-47DE-BB99-AD8184FF7F73}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8651FF66-4834-476A-8216-74EFDDD88CDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8651FF66-4834-476A-8216-74EFDDD88CDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8651FF66-4834-476A-8216-74EFDDD88CDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8651FF66-4834-476A-8216-74EFDDD88CDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EAB54AB-DAAD-4B64-985F-C3DA4F373249}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EAB54AB-DAAD-4B64-985F-C3DA4F373249}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EAB54AB-DAAD-4B64-985F-C3DA4F373249}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EAB54AB-DAAD-4B64-985F-C3DA4F373249}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7F5F411-BE81-4B18-BED2-A8D50823AEA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7F5F411-BE81-4B18-BED2-A8D50823AEA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7F5F411-BE81-4B18-BED2-A8D50823AEA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7F5F411-BE81-4B18-BED2-A8D50823AEA5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E7F5F411-BE81-4B18-BED2-A8D50823AEA5} = {492594D1-CFAC-4B93-A906-FE2F6781BD11}
+	EndGlobalSection
+EndGlobal

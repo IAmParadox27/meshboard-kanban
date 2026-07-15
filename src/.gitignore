@@ -1,0 +1,50 @@
+# Build output
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Rider
+*.sln.iml
+
+# Logs
+*.log
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# NuGet
+packages/
+*.nupkg
+.nuget/
+
+# Publish output
+publish/
+
+# EF / local DB files
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets / local config
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+
+# OS junk
+.DS_Store
+Thumbs.db
