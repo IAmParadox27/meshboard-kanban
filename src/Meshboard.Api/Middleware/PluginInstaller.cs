@@ -1,9 +1,11 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.Loader;
 using Meshboard.Core.Config;
 using Meshboard.Infrastructure.Plugins;
 using Meshboard.Plugin.Database;
 using Meshboard.Plugin.Library;
+using Meshboard.Plugin.Sources;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,7 +39,8 @@ namespace Meshboard.Api.Middleware
             
             Type[] pluginTypes = new[]
             {
-                typeof(IDatabaseProviderPlugin)
+                typeof(IDatabaseProviderPlugin),
+                typeof(IIssueSourcePlugin),
             };
 
             Type[] concreteTypes = AssemblyLoadContext.All.SelectMany(x => x.Assemblies)
@@ -52,7 +55,7 @@ namespace Meshboard.Api.Middleware
 
             foreach (IPluginServiceRegistrator registrator in registrators)
             {
-                registrator.RegisterServices(builder.Services);
+                registrator.RegisterServices(builder.Services, builder.Configuration);
                 
                 if (registrator is IPluginHasDatabase pluginHasDatabase)
                 {
@@ -107,7 +110,7 @@ namespace Meshboard.Api.Middleware
                         
                         if (!serviceRegistered)
                         {
-                            builder.Services.AddSingleton(interfaceType, plugin);
+                            builder.Services.AddKeyedSingleton(interfaceType, interfaceType.Name, plugin);
                         }
                     }
                 }

@@ -18,6 +18,7 @@ export type KanbanActivityModel = {
 
 export type KanbanCardModel = {
     id: string;
+    number: string;
     title: string;
     description: string;
     source: "github" | "fider" | "internal";

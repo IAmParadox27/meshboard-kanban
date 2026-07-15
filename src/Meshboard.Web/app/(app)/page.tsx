@@ -1,7 +1,6 @@
-﻿import { KanbanBoard } from "@/components/kanban/kanban-board";
-import { kanbanBoardData } from "@/lib/demo-data/kanban-board-data";
+﻿import { KanbanBoardView } from "@/components/kanban/kanban-board-view";
 
 export default function Home()
 {
-    return <KanbanBoard {...kanbanBoardData} />;
+    return <KanbanBoardView />;
 }

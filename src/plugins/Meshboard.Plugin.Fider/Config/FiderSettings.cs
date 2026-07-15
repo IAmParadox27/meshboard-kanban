@@ -1,0 +1,8 @@
+﻿namespace Meshboard.Plugin.Fider.Config
+{
+    public class FiderSettings
+    {
+        public string BaseUrl { get; set; } = string.Empty;
+        public string ApiKey { get; set; } = string.Empty;
+    }
+}

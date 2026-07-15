@@ -1,7 +1,13 @@
 ﻿import { SourceSummaryModel } from "@/lib/models/source";
+import { ExternalIssueModel } from "@/lib/models/external-issue";
 
 export class ApiClient
 {
+    public async GetIssues(): Promise<ExternalIssueModel[]>
+    {
+        return await this.Get<ExternalIssueModel[]>("/api/issues");
+    }
+
     public async GetSources(): Promise<SourceSummaryModel[]>
     {
         return await this.Get<SourceSummaryModel[]>("/api/sources");

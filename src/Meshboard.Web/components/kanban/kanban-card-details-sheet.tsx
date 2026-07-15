@@ -10,6 +10,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { Markdown } from "@/components/ui/markdown";
 
 import { KanbanCardModel } from "./kanban-types";
 
@@ -86,9 +87,7 @@ export function KanbanCardDetailsSheet(
                                         Description
                                     </h3>
 
-                                    <p className="text-sm leading-6 text-muted-foreground">
-                                        {card.description}
-                                    </p>
+                                    <Markdown content={card.description} />
                                 </section>
 
                                 <Separator />

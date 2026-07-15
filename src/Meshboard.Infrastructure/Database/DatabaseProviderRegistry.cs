@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Loader;
 using Meshboard.Core.Config;
+using Meshboard.Core.Extensions;
 using Meshboard.Plugin.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,7 +15,7 @@ namespace Meshboard.Infrastructure.Database
 
         public DatabaseProviderRegistry(IServiceProvider serviceProvider)
         {
-            IEnumerable<IDatabaseProviderPlugin> plugins = serviceProvider.GetServices<IDatabaseProviderPlugin>();
+            IEnumerable<IDatabaseProviderPlugin> plugins = serviceProvider.GetPluginServices<IDatabaseProviderPlugin>();
             
             m_plugins = plugins.ToDictionary(
                 x => x.ProviderKey,

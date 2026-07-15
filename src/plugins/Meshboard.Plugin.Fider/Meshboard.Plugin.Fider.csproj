@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Meshboard.Plugin\Meshboard.Plugin.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="plugin_output_dir.txt" />
+    </ItemGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="$([System.IO.File]::Exists('plugin_output_dir.txt'))">
+        <ReadLinesFromFile File="$(MSBuildProjectDirectory)\plugin_output_dir.txt">
+            <Output TaskParameter="Lines" ItemName="_PluginOutputDirLine" />
+        </ReadLinesFromFile>
+
+        <PropertyGroup>
+            <PluginOutputDir>@(_PluginOutputDirLine)</PluginOutputDir>
+            <PluginOutputDir>$([System.String]::Copy('$(PluginOutputDir)').Trim())</PluginOutputDir>
+            <PluginDestinationDir>$([System.IO.Path]::Combine('$(PluginOutputDir)', 'plugins', '$(AssemblyName)'))</PluginDestinationDir>
+        </PropertyGroup>
+
+        <MakeDir Directories="$(PluginDestinationDir)" />
+
+        <ItemGroup>
+            <_PluginOutputFiles Include="$(TargetDir)$(AssemblyName).*" />
+            <_PluginOutputFiles Include="@(ReferenceCopyLocalPaths)"
+                                Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll'" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(_PluginOutputFiles)"
+              DestinationFolder="$(PluginDestinationDir)"
+              SkipUnchangedFiles="true" />
+
+        <Message Importance="high"
+                 Text="Copied plugin output to: $(PluginDestinationDir)" />
+    </Target>
+</Project>

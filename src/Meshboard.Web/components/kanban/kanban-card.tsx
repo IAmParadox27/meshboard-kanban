@@ -55,13 +55,14 @@ function KanbanCardContent(
             </CardHeader>
 
             <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                    {card.description}
+                <p className="text-sm text-muted-foreground sm:!max-w-[240px]">
+                    {`${card.description.substring(0, 100)}${card.description.length > 100 ? "..." : ""}`}
                 </p>
 
                 <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">
-                        {card.proxyMode}</Badge>
+                        {card.proxyMode}
+                    </Badge>
 
                     {card.tags.map((tag) => (
                         <Badge
@@ -75,7 +76,7 @@ function KanbanCardContent(
 
                 <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                        {card.id}
+                        {card.number}
                     </span>
 
                     {card.assignee ? (
