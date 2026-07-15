@@ -129,7 +129,7 @@ namespace Meshboard.Plugin.GitHub
             GitHubSourceConfig config,
             GitHubIssueResponse issue)
         {
-            string sourceColumn = MapStatus(issue.State);
+            string sourceColumn = issue.State;
             
             return new ExternalIssue
             {
@@ -153,16 +153,6 @@ namespace Meshboard.Plugin.GitHub
             };
         }
 
-        private static string MapStatus(string state)
-        {
-            return state.ToLowerInvariant() switch
-            {
-                "open" => "open",
-                "closed" => "closed",
-                _ => state.ToLowerInvariant(),
-            };
-        }
-        
         private static string GetRequiredConfig(SourceDefinitionModel source, string key)
         {
             if (!source.Config.TryGetValue(key, out string? value) || string.IsNullOrWhiteSpace(value))

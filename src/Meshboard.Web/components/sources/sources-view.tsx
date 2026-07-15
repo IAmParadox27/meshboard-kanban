@@ -18,6 +18,7 @@ type SourceColumnMapping = {
 };
 
 type SourceEditorState = {
+    sourceId: string | null;
     name: string;
     providerKey: string;
     enabled: boolean;
@@ -26,6 +27,7 @@ type SourceEditorState = {
 };
 
 const emptyState: SourceEditorState = {
+    sourceId: null,
     name: "",
     providerKey: "",
     enabled: true,
@@ -120,7 +122,27 @@ export function SourcesView() {
         });
     }
 
-    async function CreateSource() {
+    function StartEditing(source: SourceDefinitionModel)
+    {
+        setEditor({
+            sourceId: source.id,
+            name: source.name,
+            providerKey: source.providerKey,
+            enabled: source.enabled,
+            config: extractPlainConfig(source.config),
+            columnMappings: extractColumnMappings(source.config),
+        });
+    }
+
+    function CancelEditing()
+    {
+        setEditor({
+            ...emptyState,
+            providerKey: m_data?.providers[0]?.providerKey ?? "",
+        });
+    }
+
+    async function SaveSource() {
         if (!m_editor.providerKey) {
             return;
         }
@@ -136,7 +158,12 @@ export function SourcesView() {
                 config: buildConfigPayload(m_editor),
             };
 
-            await apiClient.CreateSource(request);
+            if (m_editor.sourceId) {
+                await apiClient.UpdateSource(m_editor.sourceId, request);
+            } else {
+                await apiClient.CreateSource(request);
+            }
+
             setEditor({
                 ...emptyState,
                 providerKey: m_editor.providerKey,
@@ -144,7 +171,11 @@ export function SourcesView() {
 
             await Load();
         } catch (error) {
-            setError(error instanceof Error ? error.message : "Failed to create source.");
+            setError(error instanceof Error
+                ? error.message
+                : m_editor.sourceId
+                    ? "Failed to update source."
+                    : "Failed to create source.");
         } finally {
             setIsSaving(false);
         }
@@ -162,7 +193,7 @@ export function SourcesView() {
     }
 
     return (
-        <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-6 py-6">
+        <main className="mx-auto flex h-full w-full max-w-[1600px] flex-col gap-6 overflow-y-auto px-6 py-6">
             <div>
                 <h1 className="text-2xl font-semibold tracking-tight">
                     Sources
@@ -179,7 +210,7 @@ export function SourcesView() {
             <section className="rounded-xl border bg-card p-6">
                 <div className="mb-4">
                     <h2 className="text-lg font-semibold">
-                        Add source
+                        {m_editor.sourceId ? "Edit source" : "Add source"}
                     </h2>
                 </div>
 
@@ -193,9 +224,7 @@ export function SourcesView() {
                             value={m_editor.name}
                             onChange={(event) => setEditor({
                                 ...m_editor,
-                                providerKey: event.target.value,
-                                config: {},
-                                columnMappings: [],
+                                name: event.target.value,
                             })}
                             placeholder="Public roadmap"
                         />
@@ -209,10 +238,12 @@ export function SourcesView() {
                         <select
                             className="h-8 w-full rounded-md border bg-background px-3 text-sm"
                             value={m_editor.providerKey}
+                            disabled={m_editor.sourceId !== null}
                             onChange={(event) => setEditor({
                                 ...m_editor,
                                 providerKey: event.target.value,
                                 config: {},
+                                columnMappings: [],
                             })}
                         >
                             {(m_data?.providers ?? []).map((provider) => (
@@ -310,12 +341,23 @@ export function SourcesView() {
                         Add mapping
                     </Button>
                 </div>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end gap-2">
+                    {m_editor.sourceId ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={CancelEditing}
+                            disabled={m_isSaving}
+                        >
+                            Cancel
+                        </Button>
+                    ) : null}
+
                     <Button
-                        onClick={() => void CreateSource()}
+                        onClick={() => void SaveSource()}
                         disabled={m_isSaving}
                     >
-                        Add source
+                        {m_editor.sourceId ? "Save changes" : "Add source"}
                     </Button>
                 </div>
             </section>
@@ -345,6 +387,14 @@ export function SourcesView() {
                                 <span className="text-sm text-muted-foreground">
                                     {source.enabled ? "Enabled" : "Disabled"}
                                 </span>
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => StartEditing(source)}
+                                >
+                                    Edit
+                                </Button>
 
                                 <Button
                                     variant="destructive"

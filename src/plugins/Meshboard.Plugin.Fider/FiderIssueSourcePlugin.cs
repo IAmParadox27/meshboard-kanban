@@ -105,7 +105,7 @@ namespace Meshboard.Plugin.Fider
             FiderSourceConfig config,
             FiderPostResponse issue)
         {
-            string sourceColumn = MapStatus(issue.Status);
+            string sourceColumn = issue.Status;
 
             return new ExternalIssue
             {
@@ -127,18 +127,6 @@ namespace Meshboard.Plugin.Fider
             };
         }
 
-        private string MapStatus(string status)
-        {
-            return status.ToLowerInvariant() switch
-            {
-                "planned" => "planned",
-                "started" => "in-progress",
-                "completed" => "done",
-                "declined" => "declined",
-                _ => "open",
-            };
-        }
-        
         private static string GetRequiredConfig(SourceDefinitionModel source, string key)
         {
             if (!source.Config.TryGetValue(key, out string? value) || string.IsNullOrWhiteSpace(value))
