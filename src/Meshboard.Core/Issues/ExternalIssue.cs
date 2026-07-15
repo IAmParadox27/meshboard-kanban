@@ -21,6 +21,10 @@
         
         public string? Reporter { get; set; }
         
+        public string? SourceColumn { get; set; }
+        
+        public string? BoardColumnId { get; set; }
+        
         public DateTimeOffset? UpdatedAt { get; set; }
         
         public DateTimeOffset? CreatedAt { get; set; }

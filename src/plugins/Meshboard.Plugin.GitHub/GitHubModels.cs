@@ -11,16 +11,16 @@ namespace Meshboard.Plugin.GitHub
         public int Number { get; set; }
 
         [JsonPropertyName("title")]
-        public string Title { get; set; } = null!;
+        public string Title { get; set; } = string.Empty;
 
         [JsonPropertyName("body")]
         public string? Body { get; set; }
 
-        [JsonPropertyName("html_url")]
-        public string HtmlUrl { get; set; } = null!;
-
         [JsonPropertyName("state")]
-        public string State { get; set; } = null!;
+        public string State { get; set; } = string.Empty;
+
+        [JsonPropertyName("html_url")]
+        public string? HtmlUrl { get; set; }
 
         [JsonPropertyName("created_at")]
         public DateTimeOffset CreatedAt { get; set; }
@@ -38,18 +38,22 @@ namespace Meshboard.Plugin.GitHub
         public List<GitHubLabelResponse> Labels { get; set; } = [];
 
         [JsonPropertyName("pull_request")]
-        public object? PullRequest { get; set; }
+        public GitHubPullRequestMarkerResponse? PullRequest { get; set; }
     }
 
     public class GitHubUserResponse
     {
         [JsonPropertyName("login")]
-        public string Login { get; set; } = null!;
+        public string Login { get; set; } = string.Empty;
     }
 
     public class GitHubLabelResponse
     {
         [JsonPropertyName("name")]
-        public string Name { get; set; } = null!;
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class GitHubPullRequestMarkerResponse
+    {
     }
 }

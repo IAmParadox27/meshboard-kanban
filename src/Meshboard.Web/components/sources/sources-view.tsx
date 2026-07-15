@@ -1,229 +1,362 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
-
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { SourceSummaryModel } from "@/lib/models/source";
+    SourceDefinitionModel,
+    SourceProviderDefinitionModel,
+    SourcesPageModel,
+    UpsertSourceDefinitionRequest,
+} from "@/lib/models/sources-models";
+
 import { apiClient } from "@/lib/api/api-client";
 
-type SourcesState = {
-    sources: SourceSummaryModel[];
-    isLoading: boolean;
-    error: string | null;
+type SourceColumnMapping = {
+    sourceValue: string;
+    boardColumnId: string;
 };
 
-function GetStatusVariant(status: SourceSummaryModel["status"]): "secondary" | "outline" | "destructive"
+type SourceEditorState = {
+    name: string;
+    providerKey: string;
+    enabled: boolean;
+    config: Record<string, string>;
+    columnMappings: SourceColumnMapping[];
+};
+
+const emptyState: SourceEditorState = {
+    name: "",
+    providerKey: "",
+    enabled: true,
+    config: {},
+    columnMappings: [],
+};
+
+function extractColumnMappings(config: Record<string, string>): SourceColumnMapping[]
 {
-    switch (status)
-    {
-        case "healthy":
-            return "secondary";
-
-        case "warning":
-            return "outline";
-
-        case "error":
-            return "destructive";
-
-        case "disabled":
-            return "outline";
-
-        default:
-            return "outline";
-    }
+    return Object.entries(config)
+        .filter(([key]) => key.startsWith("columnMappings."))
+        .map(([key, value]) => ({
+            sourceValue: key.substring("columnMappings.".length),
+            boardColumnId: value,
+        }));
 }
 
-function FormatLastSync(lastSyncAt?: string | null): string
+function buildConfigPayload(editor: SourceEditorState): Record<string, string>
 {
-    if (!lastSyncAt)
+    const baseConfig: Record<string, string> = { ...editor.config };
+
+    for (const mapping of editor.columnMappings)
     {
-        return "Never";
+        const sourceValue = mapping.sourceValue.trim();
+        const boardColumnId = mapping.boardColumnId.trim();
+
+        if (!sourceValue || !boardColumnId)
+        {
+            continue;
+        }
+
+        baseConfig[`columnMappings.${sourceValue}`] = boardColumnId;
     }
 
-    const parsed = new Date(lastSyncAt);
+    return baseConfig;
+}
 
-    if (Number.isNaN(parsed.getTime()))
-    {
-        return lastSyncAt;
-    }
-
-    return parsed.toLocaleString();
+function extractPlainConfig(config: Record<string, string>): Record<string, string>
+{
+    return Object.fromEntries(
+        Object.entries(config).filter(([key]) => !key.startsWith("columnMappings."))
+    );
 }
 
 export function SourcesView() {
-    const [m_state, setState] = useState<SourcesState>({
-        sources: [],
-        isLoading: true,
-        error: null,
-    });
-
-    async function LoadSources()
-    {
-        setState((current) => ({
-            ...current,
-            isLoading: true,
-            error: null,
-        }));
-
-        try
-        {
-            const sources = await apiClient.GetSources();
-
-            setState({
-                sources,
-                isLoading: false,
-                error: null,
-            });
-        }
-        catch (error)
-        {
-            setState({
-                sources: [],
-                isLoading: false,
-                error: error instanceof Error
-                    ? error.message
-                    : "Failed to load sources.",
-            });
-        }
-    }
+    const [m_data, setData] = useState<SourcesPageModel | null>(null);
+    const [m_editor, setEditor] = useState<SourceEditorState>(emptyState);
+    const [m_error, setError] = useState<string | null>(null);
+    const [m_isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        void LoadSources();
+        void Load();
     }, []);
 
-    if (m_state.isLoading) {
-        return (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {Array.from({length: 3}).map((_, index) => (
-                    <Card key={index}>
-                        <CardHeader className="space-y-3">
-                            <div className="h-5 w-32 animate-pulse rounded bg-muted"/>
-                            <div className="h-4 w-full animate-pulse rounded bg-muted"/>
-                        </CardHeader>
+    async function Load() {
+        setError(null);
 
-                        <CardContent className="space-y-3">
-                            {Array.from({length: 5}).map((__, rowIndex) => (
-                                <div key={rowIndex} className="flex justify-between gap-3">
-                                    <div className="h-4 w-20 animate-pulse rounded bg-muted"/>
-                                    <div className="h-4 w-24 animate-pulse rounded bg-muted"/>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        );
+        try {
+            const data = await apiClient.GetSourcesPage();
+            setData(data);
+
+            if (!m_editor.providerKey && data.providers.length > 0) {
+                setEditor({
+                    ...emptyState,
+                    providerKey: data.providers[0].providerKey,
+                });
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Failed to load sources.");
+        }
     }
 
-    if (m_state.error) {
-        return (
-            <Card className="border-destructive/30">
-                <CardHeader>
-                    <CardTitle>
-                        Unable to load sources
-                    </CardTitle>
+    const selectedProvider = useMemo(() => {
+        return m_data?.providers.find((x) => x.providerKey === m_editor.providerKey) ?? null;
+    }, [m_data, m_editor.providerKey]);
 
-                    <CardDescription>
-                        {m_state.error}
-                    </CardDescription>
-                </CardHeader>
+    function updateColumnMapping(index: number, mapping: SourceColumnMapping)
+    {
+        setEditor({
+            ...m_editor,
+            columnMappings: m_editor.columnMappings.map((x, i) =>
+                i === index ? mapping : x
+            ),
+        });
+    }
 
-                <CardContent>
-                    <Button onClick={() => void LoadSources()}>
-                        Retry
-                    </Button></CardContent>
-            </Card>
-        );
+    function removeColumnMapping(index: number)
+    {
+        setEditor({
+            ...m_editor,
+            columnMappings: m_editor.columnMappings.filter((_, i) => i !== index),
+        });
+    }
+
+    async function CreateSource() {
+        if (!m_editor.providerKey) {
+            return;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const request: UpsertSourceDefinitionRequest = {
+                name: m_editor.name,
+                providerKey: m_editor.providerKey,
+                enabled: m_editor.enabled,
+                config: buildConfigPayload(m_editor),
+            };
+
+            await apiClient.CreateSource(request);
+            setEditor({
+                ...emptyState,
+                providerKey: m_editor.providerKey,
+            });
+
+            await Load();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Failed to create source.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    async function DeleteSource(source: SourceDefinitionModel) {
+        setError(null);
+
+        try {
+            await apiClient.DeleteSource(source.id);
+            await Load();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Failed to delete source.");
+        }
     }
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardDescription>Total sources</CardDescription>
-                        <CardTitle className="text-2xl">
-                            {m_state.sources.length}
-                        </CardTitle>
-                    </CardHeader>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardDescription>Healthy</CardDescription>
-                        <CardTitle className="text-2xl">
-                            {m_state.sources.filter((x) => x.status == "healthy").length}
-                        </CardTitle>
-                    </CardHeader>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardDescription>Needs attention</CardDescription>
-                        <CardTitle className="text-2xl">
-                            {m_state.sources.filter((x) => x.status != "healthy").length}
-                        </CardTitle>
-                    </CardHeader>
-                </Card>
+        <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-6 py-6">
+            <div>
+                <h1 className="text-2xl font-semibold tracking-tight">
+                    Sources
+                </h1>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {m_state.sources.map((source) => (
-                    <Card key={source.id}>
-                        <CardHeader>
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-1">
-                                    <CardTitle>
-                                        {source.name}
-                                    </CardTitle>
+            {m_error ? (
+                <div
+                    className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                    {m_error}
+                </div>
+            ) : null}
 
-                                    <CardDescription>
-                                        {source.description}
-                                    </CardDescription></div>
+            <section className="rounded-xl border bg-card p-6">
+                <div className="mb-4">
+                    <h2 className="text-lg font-semibold">
+                        Add source
+                    </h2>
+                </div>
 
-                                <Badge variant={GetStatusVariant(source.status)}>
-                                    {source.status}
-                                </Badge>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                            Name
+                        </label>
+
+                        <Input
+                            value={m_editor.name}
+                            onChange={(event) => setEditor({
+                                ...m_editor,
+                                providerKey: event.target.value,
+                                config: {},
+                                columnMappings: [],
+                            })}
+                            placeholder="Public roadmap"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                            Provider
+                        </label>
+
+                        <select
+                            className="h-8 w-full rounded-md border bg-background px-3 text-sm"
+                            value={m_editor.providerKey}
+                            onChange={(event) => setEditor({
+                                ...m_editor,
+                                providerKey: event.target.value,
+                                config: {},
+                            })}
+                        >
+                            {(m_data?.providers ?? []).map((provider) => (
+                                <option
+                                    key={provider.providerKey}
+                                    value={provider.providerKey}
+                                >
+                                    {provider.displayName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {selectedProvider?.configurationFields.map((field) => (
+                        <div
+                            key={field.key}
+                            className="space-y-2"
+                        >
+                            <label className="text-sm font-medium">
+                                {field.label}
+                            </label>
+
+                            <Input
+                                type={field.type === "password" ? "password" : "text"}
+                                value={m_editor.config[field.key] ?? ""}
+                                onChange={(event) => setEditor({
+                                    ...m_editor,
+                                    config: {
+                                        ...m_editor.config,
+                                        [field.key]: event.target.value,
+                                    },
+                                })}
+                                placeholder={field.placeholder ?? ""}
+                            />
+
+                            {field.helpText ? (
+                                <p className="text-xs text-muted-foreground">
+                                    {field.helpText}
+                                </p>
+                            ) : null}
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ marginTop: "2rem" }}>
+                    <h3 className="text-sm font-medium" style={{ marginBottom: "0.5rem" }}>Column Mappings</h3>
+                    {m_editor.columnMappings.map((mapping, index) => (
+                        <div
+                            key={index}
+                            style={{ marginBottom: "1rem" }}
+                            className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+                        >
+                            <Input
+                                value={mapping.sourceValue}
+                                onChange={(event) => updateColumnMapping(index, {
+                                    ...mapping,
+                                    sourceValue: event.target.value,
+                                })}
+                                placeholder="Source Column Name (e.g. In Progress)"
+                            />
+
+                            <Input
+                                value={mapping.boardColumnId}
+                                onChange={(event) => updateColumnMapping(index, {
+                                    ...mapping,
+                                    boardColumnId: event.target.value,
+                                })}
+                                placeholder="Meshboard Column Name (e.g. in-progress)"
+                            />
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => removeColumnMapping(index)}
+                            >
+                                Remove
+                            </Button>
+                        </div>
+                    ))}
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setEditor({
+                            ...m_editor,
+                            columnMappings: [
+                                ...m_editor.columnMappings,
+                                {
+                                    sourceValue: "",
+                                    boardColumnId: "",
+                                },
+                            ],
+                        })}
+                    >
+                        Add mapping
+                    </Button>
+                </div>
+                <div className="mt-4 flex justify-end">
+                    <Button
+                        onClick={() => void CreateSource()}
+                        disabled={m_isSaving}
+                    >
+                        Add source
+                    </Button>
+                </div>
+            </section>
+
+            <section className="rounded-xl border bg-card p-6">
+                <h2 className="mb-4 text-lg font-semibold">
+                    Configured sources
+                </h2>
+
+                <div className="space-y-3">
+                    {(m_data?.sources ?? []).map((source) => (
+                        <div
+                            key={source.id}
+                            className="flex items-center justify-between rounded-lg border px-4 py-3"
+                        >
+                            <div>
+                                <div className="font-medium">
+                                    {source.name}
+                                </div>
+
+                                <div className="text-sm text-muted-foreground">
+                                    {source.providerKey}
+                                </div>
                             </div>
-                        </CardHeader>
 
-                        <CardContent className="space-y-3 text-sm">
-                            <div className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">Kind</span>
-                                <span>{source.kind}</span>
-                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">
+                                    {source.enabled ? "Enabled" : "Disabled"}
+                                </span>
 
-                            <div className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">Mode</span>
-                                <span>{source.proxyMode}</span>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => void DeleteSource(source)}
+                                >
+                                    Delete
+                                </Button>
                             </div>
-
-                            <div className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">Enabled</span>
-                                <span>{source.enabled ? "Yes" : "No"}</span>
-                            </div>
-
-                            <div className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">Linked items</span>
-                                <span>{source.linkedItemsCount}</span>
-                            </div>
-
-                            <div className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">Last sync</span>
-                                <span className="text-right">{FormatLastSync(source.lastSyncAt)}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+        </main>
     );
 }

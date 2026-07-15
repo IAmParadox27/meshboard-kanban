@@ -20,6 +20,8 @@ namespace Meshboard.Infrastructure.Database
                 .WithMany(x => x.ExternalLogins)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<SourceDefinition>();
         }
     }
 }

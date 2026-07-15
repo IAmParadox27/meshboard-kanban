@@ -7,7 +7,12 @@ namespace Meshboard.Plugin.Sources
     {
         string SourceKey { get; }
 
+        string DisplayName { get; }
+
+        SourceProviderDefinition GetDefinition();
+
         Task<IReadOnlyList<ExternalIssue>> GetIssuesAsync(
+            SourceDefinitionModel source,
             CancellationToken cancellationToken = default);
     }
 }
