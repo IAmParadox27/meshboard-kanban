@@ -56,15 +56,6 @@ export function KanbanBoardView(
             return;
         }
 
-        const confirmed = window.confirm(
-            `Remove all cards from ${m_state.boardDefinition.name}?`
-        );
-
-        if (!confirmed)
-        {
-            return;
-        }
-
         setState((current) => ({
             ...current,
             isSavingBoardAssignment: true,
@@ -102,15 +93,6 @@ export function KanbanBoardView(
 
         const targetBoard = m_state.curatedBoards.find((x) => x.id === targetBoardId);
         const targetBoardName = targetBoard?.name ?? "the selected board";
-
-        const confirmed = window.confirm(
-            `Move all cards from ${m_state.boardDefinition.name} to ${targetBoardName}?`
-        );
-
-        if (!confirmed)
-        {
-            return;
-        }
 
         setState((current) => ({
             ...current,

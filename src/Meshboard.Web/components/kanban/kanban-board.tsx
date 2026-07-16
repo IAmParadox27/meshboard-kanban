@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
     DndContext,
     DragEndEvent,
@@ -14,13 +14,23 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 import { KanbanCard } from "./kanban-card";
 import { KanbanCardDetailsSheet } from "./kanban-card-details-sheet";
 import { KanbanColumn } from "./kanban-column";
-import {KanbanBoardModel, KanbanCardModel, KanbanColumnModel} from "./kanban-types";
-import {Spinner} from "@/components/ui/spinner";
+import { KanbanBoardModel, KanbanCardModel, KanbanColumnModel } from "./kanban-types";
 
 type KanbanBoardProps = KanbanBoardModel & {
     curatedBoards: CuratedBoardActionModel[];
@@ -66,6 +76,8 @@ export function KanbanBoard(
     const [m_columns, setColumns] = useState<KanbanColumnModel[]>(columns);
     const [m_selectedCardId, setSelectedCardId] = useState<string | null>(null);
     const [m_activeCardId, setActiveCardId] = useState<string | null>(null);
+    const [m_isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+    const [m_isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
 
     const m_sensors = useSensors(
         useSensor(PointerSensor, {
@@ -98,6 +110,10 @@ export function KanbanBoard(
 
         return null;
     }, [m_columns, m_activeCardId]);
+
+    const m_moveTargetBoard = useMemo(() => {
+        return moveTargets.find((x) => x.id === moveTargetBoardId) ?? null;
+    }, [moveTargetBoardId, moveTargets]);
 
     function FindCardLocation(cardId: string) {
         for (const column of m_columns) {
@@ -271,24 +287,89 @@ export function KanbanBoard(
                                             ))}
                                         </select>
 
-                                        <Button
-                                            variant="outline"
-                                            disabled={isSavingBoardAssignment || moveTargetBoardId.length === 0}
-                                            onClick={() => onMoveAllFromCurrentBoard(moveTargetBoardId)}
-                                        >
-                                            Move all cards
-                                        </Button>
+                                        <AlertDialog open={m_isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
+                                            <Button
+                                                variant="outline"
+                                                disabled={isSavingBoardAssignment || moveTargetBoardId.length === 0}
+                                                onClick={() => setIsMoveDialogOpen(true)}
+                                            >
+                                                Move all cards
+                                            </Button>
+
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>
+                                                        Move all cards?
+                                                    </AlertDialogTitle>
+
+                                                    <AlertDialogDescription>
+                                                        {m_moveTargetBoard
+                                                            ? `This will move every card from ${title} to ${m_moveTargetBoard.name}. Cards already on the target board will be left alone.`
+                                                            : "Choose a target board to move all cards to."}
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel disabled={isSavingBoardAssignment}>
+                                                        Cancel
+                                                    </AlertDialogCancel>
+
+                                                    <AlertDialogAction
+                                                        disabled={isSavingBoardAssignment || moveTargetBoardId.length === 0}
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+                                                            setIsMoveDialogOpen(false);
+                                                            onMoveAllFromCurrentBoard(moveTargetBoardId);
+                                                        }}
+                                                    >
+                                                        Move all cards
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </div>
                                 ) : null}
 
                                 {canClearCurrentBoard ? (
-                                    <Button
-                                        variant="destructive"
-                                        onClick={onClearCurrentBoard}
-                                        disabled={isSavingBoardAssignment}
-                                    >
-                                        Remove all cards
-                                    </Button>
+                                    <AlertDialog open={m_isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+                                        <Button
+                                            variant="destructive"
+                                            onClick={() => setIsClearDialogOpen(true)}
+                                            disabled={isSavingBoardAssignment}
+                                        >
+                                            Remove all cards
+                                        </Button>
+
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>
+                                                    Remove all cards?
+                                                </AlertDialogTitle>
+
+                                                <AlertDialogDescription>
+                                                    This will remove every card from {title}. This only clears this curated board assignment.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel disabled={isSavingBoardAssignment}>
+                                                    Cancel
+                                                </AlertDialogCancel>
+
+                                                <AlertDialogAction
+                                                    variant="destructive"
+                                                    disabled={isSavingBoardAssignment}
+                                                    onClick={(event) => {
+                                                        event.preventDefault();
+                                                        setIsClearDialogOpen(false);
+                                                        onClearCurrentBoard();
+                                                    }}
+                                                >
+                                                    Remove all cards
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 ) : null}
 
                                 <Button variant="outline">
