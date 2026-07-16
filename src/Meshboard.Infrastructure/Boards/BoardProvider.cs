@@ -31,12 +31,23 @@ namespace Meshboard.Infrastructure.Boards
                 .Set<BoardSourceDefinition>()
                 .ToListAsync(cancellationToken);
 
+            List<BoardColumnDefinition> boardColumns = await m_dbContext
+                .Set<BoardColumnDefinition>()
+                .OrderBy(x => x.SortOrder)
+                .ThenBy(x => x.Title)
+                .ToListAsync(cancellationToken);
+
             return boards
                 .Select(x => Map(
                     x,
                     boardSources
                         .Where(y => y.BoardId == x.Id)
                         .Select(y => y.SourceId)
+                        .ToArray(),
+                    boardColumns
+                        .Where(y => y.BoardId == x.Id)
+                        .OrderBy(y => y.SortOrder)
+                        .ThenBy(y => y.Title)
                         .ToArray()))
                 .ToArray();
         }
@@ -55,11 +66,19 @@ namespace Meshboard.Infrastructure.Boards
             }
 
             Guid[] sourceIds = await m_dbContext
-                .Set<BoardSourceDefinition>().Where(x => x.BoardId == id)
+                .Set<BoardSourceDefinition>()
+                .Where(x => x.BoardId == id)
                 .Select(x => x.SourceId)
                 .ToArrayAsync(cancellationToken);
 
-            return Map(board, sourceIds);
+            BoardColumnDefinition[] columns = await m_dbContext
+                .Set<BoardColumnDefinition>()
+                .Where(x => x.BoardId == id)
+                .OrderBy(x => x.SortOrder)
+                .ThenBy(x => x.Title)
+                .ToArrayAsync(cancellationToken);
+
+            return Map(board, sourceIds, columns);
         }
 
         public async Task<BoardDefinitionModel> CreateAsync(
@@ -87,10 +106,35 @@ namespace Meshboard.Infrastructure.Boards
                     SourceId = sourceId,
                 });
             }
-
+            
+            foreach (UpsertBoardColumnDefinitionRequest column in request.Columns)
+            {
+                m_dbContext.Set<BoardColumnDefinition>().Add(new BoardColumnDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    BoardId = board.Id,
+                    ColumnId = column.ColumnId,
+                    Title = column.Title,
+                    SortOrder = column.SortOrder,
+                });
+            }
+            
             await m_dbContext.SaveChangesAsync(cancellationToken);
 
-            return Map(board, request.SourceIds.Distinct().ToArray());
+            return Map(
+                board,
+                request.SourceIds.Distinct().ToArray(),
+                request.Columns
+                    .OrderBy(x => x.SortOrder)
+                    .Select(x => new BoardColumnDefinition
+                    {
+                        Id = Guid.NewGuid(),
+                        BoardId = board.Id,
+                        ColumnId = x.ColumnId,
+                        Title = x.Title,
+                        SortOrder = x.SortOrder,
+                    })
+                    .ToArray());
         }
 
         public async Task<BoardDefinitionModel?> UpdateAsync(
@@ -127,10 +171,42 @@ namespace Meshboard.Infrastructure.Boards
                     SourceId = sourceId,
                 });
             }
+            
+            List<BoardColumnDefinition> existingColumns = await m_dbContext
+                .Set<BoardColumnDefinition>()
+                .Where(x => x.BoardId == id)
+                .ToListAsync(cancellationToken);
 
+            m_dbContext.Set<BoardColumnDefinition>().RemoveRange(existingColumns);
+
+            foreach (UpsertBoardColumnDefinitionRequest column in request.Columns)
+            {
+                m_dbContext.Set<BoardColumnDefinition>().Add(new BoardColumnDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    BoardId = id,
+                    ColumnId = column.ColumnId,
+                    Title = column.Title,
+                    SortOrder = column.SortOrder,
+                });
+            }
+            
             await m_dbContext.SaveChangesAsync(cancellationToken);
 
-            return Map(board, request.SourceIds.Distinct().ToArray());
+            return Map(
+                board,
+                request.SourceIds.Distinct().ToArray(),
+                request.Columns
+                    .OrderBy(x => x.SortOrder)
+                    .Select(x => new BoardColumnDefinition
+                    {
+                        Id = Guid.NewGuid(),
+                        BoardId = board.Id,
+                        ColumnId = x.ColumnId,
+                        Title = x.Title,
+                        SortOrder = x.SortOrder,
+                    })
+                    .ToArray());
         }
 
         public async Task<bool> DeleteAsync(
@@ -318,7 +394,8 @@ namespace Meshboard.Infrastructure.Boards
 
         private static BoardDefinitionModel Map(
             BoardDefinition board,
-            IReadOnlyList<Guid> sourceIds)
+            IReadOnlyList<Guid> sourceIds,
+            IReadOnlyList<BoardColumnDefinition> columns)
         {
             return new BoardDefinitionModel
             {
@@ -327,6 +404,16 @@ namespace Meshboard.Infrastructure.Boards
                 Mode = board.Mode,
                 Enabled = board.Enabled,
                 SourceIds = sourceIds,
+                Columns = columns
+                    .OrderBy(x => x.SortOrder)
+                    .ThenBy(x => x.Title)
+                    .Select(x => new BoardColumnDefinitionModel
+                    {
+                        ColumnId = x.ColumnId,
+                        Title = x.Title,
+                        SortOrder = x.SortOrder,
+                    })
+                    .ToArray(),
                 CreatedAt = board.CreatedAt,
                 UpdatedAt = board.UpdatedAt,
             };

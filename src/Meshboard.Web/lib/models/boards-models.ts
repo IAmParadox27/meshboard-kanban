@@ -8,12 +8,25 @@ export const BoardModes = {
 
 export type BoardMode = (typeof BoardModes)[keyof typeof BoardModes];
 
+export type BoardColumnDefinitionModel = {
+    columnId: string;
+    title: string;
+    sortOrder: number;
+};
+
+export type UpsertBoardColumnDefinitionRequest = {
+    columnId: string;
+    title: string;
+    sortOrder: number;
+};
+
 export type BoardDefinitionModel = {
     id: string;
     name: string;
     mode: BoardMode;
     enabled: boolean;
     sourceIds: string[];
+    columns: BoardColumnDefinitionModel[];
     createdAt: string;
     updatedAt: string;
 };
@@ -23,6 +36,7 @@ export type UpsertBoardDefinitionRequest = {
     mode: BoardMode;
     enabled: boolean;
     sourceIds: string[];
+    columns: UpsertBoardColumnDefinitionRequest[];
 };
 
 export type BoardsPageModel = {

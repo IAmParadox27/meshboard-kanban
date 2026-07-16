@@ -65,6 +65,7 @@ export function KanbanBoardView(
             const board = MapIssuesToBoard(
                 boardData.board.name,
                 GetBoardDescription(boardData.board.mode),
+                boardData.board.columns,
                 boardData.issues,
                 sourceNameById,
             );

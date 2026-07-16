@@ -48,6 +48,12 @@ namespace Meshboard.Infrastructure.Database
                 .WithMany()
                 .HasForeignKey(x => x.SourceId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<BoardColumnDefinition>()
+                .HasOne(x => x.Board)
+                .WithMany()
+                .HasForeignKey(x => x.BoardId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

@@ -4,6 +4,9 @@
     KanbanColumnModel,
     KanbanUserModel,
 } from "@/components/kanban/kanban-types";
+import {
+    BoardColumnDefinitionModel,
+} from "@/lib/models/boards-models";
 import { ExternalIssueModel } from "@/lib/models/external-issue";
 
 function ToUser(name?: string | null): KanbanUserModel | undefined
@@ -21,7 +24,8 @@ function ToUser(name?: string | null): KanbanUserModel | undefined
         .join("");
 
     return {
-        name,initials: initials || "?",
+        name,
+        initials: initials || "?",
     };
 }
 
@@ -111,7 +115,8 @@ function ToCard(
         sourceId: issue.sourceKey,
         externalId: issue.externalId,
         number: issue.issueNumber,
-        title: issue.title,description: issue.description ?? "No description provided.",
+        title: issue.title,
+        description: issue.description ?? "No description provided.",
         source: ToSourceKind(sourceLabel),
         sourceLabel,
         status: "synced",
@@ -132,31 +137,50 @@ function ToCard(
 export function MapIssuesToBoard(
     title: string,
     description: string,
+    configuredColumns: BoardColumnDefinitionModel[],
     issues: ExternalIssueModel[],
     sourceNameById: Record<string, string> = {},
 ): KanbanBoardModel {
-    const groupedCards = issues.reduce<Record<string, KanbanCardModel[]>>((accumulator, issue) => {
-        const columnId = ToColumnId(issue);
+    const columnsById: Record<string, KanbanColumnModel> = {};
+    const configuredColumnIds: string[] = [];
 
-        if (!accumulator[columnId]) {
-            accumulator[columnId] = [];
+    for (const configuredColumn of [...configuredColumns].sort((a, b) => a.sortOrder - b.sortOrder)) {
+        const columnId = SlugifyColumnId(configuredColumn.columnId);
+
+        if (!columnId || columnsById[columnId]) {
+            continue;
         }
 
-        accumulator[columnId].push(ToCard(issue, sourceNameById));
-        return accumulator;
-    }, {});
+        configuredColumnIds.push(columnId);
+        columnsById[columnId] = {
+            id: columnId,
+            title: configuredColumn.title,
+            cards: [],
+        };
+    }
 
-    const columnOrder = Object.keys(groupedCards).sort((a, b) => a.localeCompare(b));
+    for (const issue of issues) {
+        const columnId = ToColumnId(issue);
 
-    const columns: KanbanColumnModel[] = columnOrder.map((columnId) => ({
-        id: columnId,
-        title: ToColumnTitle(columnId),
-        cards: groupedCards[columnId] ?? [],
-    }));
+        if (!columnsById[columnId]) {
+            columnsById[columnId] = {
+                id: columnId,
+                title: ToColumnTitle(columnId),
+                cards: [],
+            };
+        }
+
+        columnsById[columnId].cards.push(ToCard(issue, sourceNameById));
+    }
+
+    const configuredBoardColumns = configuredColumnIds.map((columnId) => columnsById[columnId]);
+    const extraColumns = Object.values(columnsById)
+        .filter((column) => !configuredColumnIds.includes(column.id))
+        .sort((a, b) => a.title.localeCompare(b.title));
 
     return {
         title,
         description,
-        columns,
+        columns: [...configuredBoardColumns, ...extraColumns],
     };
 }

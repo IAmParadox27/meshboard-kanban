@@ -12,6 +12,8 @@
 
         public IReadOnlyList<Guid> SourceIds { get; set; } = [];
 
+        public IReadOnlyList<BoardColumnDefinitionModel> Columns { get; set; } = [];
+        
         public DateTimeOffset CreatedAt { get; set; }
 
         public DateTimeOffset UpdatedAt { get; set; }

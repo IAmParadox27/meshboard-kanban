@@ -9,5 +9,7 @@
         public bool Enabled { get; set; } = true;
 
         public IReadOnlyList<Guid> SourceIds { get; set; } = [];
+        
+        public IReadOnlyList<UpsertBoardColumnDefinitionRequest> Columns { get; set; } = [];
     }
 }
