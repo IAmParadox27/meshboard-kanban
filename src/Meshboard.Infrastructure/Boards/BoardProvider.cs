@@ -441,5 +441,76 @@ namespace Meshboard.Infrastructure.Boards
             await m_dbContext.SaveChangesAsync(cancellationToken);
             return true;
         }
+        
+        public async Task<bool> MoveAllIssuesAsync(
+            Guid boardId,
+            MoveBoardIssuesRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (boardId == request.TargetBoardId)
+            {
+                return true;
+            }
+
+            BoardDefinition? sourceBoard = await m_dbContext
+                .Set<BoardDefinition>()
+                .FirstOrDefaultAsync(x => x.Id == boardId, cancellationToken);
+
+            BoardDefinition? targetBoard = await m_dbContext
+                .Set<BoardDefinition>()
+                .FirstOrDefaultAsync(x => x.Id == request.TargetBoardId, cancellationToken);
+
+            if (sourceBoard == null
+                || targetBoard == null
+                || sourceBoard.Mode != BoardMode.Curated
+                || targetBoard.Mode != BoardMode.Curated)
+            {
+                return false;
+            }
+
+            List<BoardIssueAssignment> sourceAssignments = await m_dbContext
+                .Set<BoardIssueAssignment>()
+                .Where(x => x.BoardId == boardId)
+                .ToListAsync(cancellationToken);
+
+            if (sourceAssignments.Count == 0)
+            {
+                return true;
+            }
+
+            HashSet<string> targetKeys = await m_dbContext
+                .Set<BoardIssueAssignment>()
+                .Where(x => x.BoardId == request.TargetBoardId)
+                .Select(x => ToAssignmentKey(x.SourceId, x.ExternalId))
+                .ToHashSetAsync(cancellationToken);
+
+            foreach (BoardIssueAssignment assignment in sourceAssignments)
+            {
+                string key = ToAssignmentKey(assignment.SourceId, assignment.ExternalId);
+
+                if (targetKeys.Contains(key))
+                {
+                    continue;
+                }
+
+                m_dbContext.Set<BoardIssueAssignment>().Add(new BoardIssueAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    BoardId = request.TargetBoardId,
+                    SourceId = assignment.SourceId,
+                    ExternalId = assignment.ExternalId,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                });
+            }
+
+            m_dbContext.Set<BoardIssueAssignment>().RemoveRange(sourceAssignments);
+            await m_dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        
+        private static string ToAssignmentKey(Guid sourceId, string externalId)
+        {
+            return $"{sourceId:N}:{externalId}";
+        }
     }
 }

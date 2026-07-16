@@ -9,6 +9,7 @@ import {
     BoardDetailsModel,
     BoardsPageModel,
     BoardIssueAssignmentRequest,
+    MoveBoardIssuesRequest,
     UpsertBoardDefinitionRequest,
 } from "@/lib/models/boards-models";
 
@@ -58,6 +59,14 @@ export class ApiClient
     public async ClearBoard(boardId: string): Promise<void>
     {
         await this.Send<void>(`/api/boards/${boardId}/clear`, "DELETE");
+    }
+
+    public async MoveAllIssues(
+        boardId: string,
+        request: MoveBoardIssuesRequest,
+    ): Promise<void>
+    {
+        await this.Send<void>(`/api/boards/${boardId}/issues/move`, "POST", request);
     }
 
     public async GetSourcesPage(): Promise<SourcesPageModel>

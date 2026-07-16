@@ -31,6 +31,11 @@ type KanbanBoardProps = KanbanBoardModel & {
     isRefreshing: boolean;
     canClearCurrentBoard: boolean;
     onClearCurrentBoard: () => void;
+    canMoveAllFromCurrentBoard: boolean;
+    moveTargets: CuratedBoardActionModel[];
+    moveTargetBoardId: string;
+    onMoveTargetBoardIdChange: (boardId: string) => void;
+    onMoveAllFromCurrentBoard: (targetBoardId: string) => void;
 };
 
 type CuratedBoardActionModel = {
@@ -51,6 +56,11 @@ export function KanbanBoard(
         isRefreshing,
         canClearCurrentBoard,
         onClearCurrentBoard,
+        canMoveAllFromCurrentBoard,
+        moveTargets,
+        moveTargetBoardId,
+        onMoveTargetBoardIdChange,
+        onMoveAllFromCurrentBoard,
     }: KanbanBoardProps,
 ) {
     const [m_columns, setColumns] = useState<KanbanColumnModel[]>(columns);
@@ -239,6 +249,35 @@ export function KanbanBoard(
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Spinner className="size-4" />
                                         Refreshing…
+                                    </div>
+                                ) : null}
+
+                                {canMoveAllFromCurrentBoard ? (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <select
+                                            className="h-8 min-w-56 rounded-md border bg-background px-3 text-sm"
+                                            value={moveTargetBoardId}
+                                            onChange={(event) => onMoveTargetBoardIdChange(event.target.value)}
+                                            disabled={isSavingBoardAssignment || moveTargets.length === 0}
+                                        >
+                                            <option value="">
+                                                Move all to board...
+                                            </option>
+
+                                            {moveTargets.map((board) => (
+                                                <option key={board.id} value={board.id}>
+                                                    {board.name}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <Button
+                                            variant="outline"
+                                            disabled={isSavingBoardAssignment || moveTargetBoardId.length === 0}
+                                            onClick={() => onMoveAllFromCurrentBoard(moveTargetBoardId)}
+                                        >
+                                            Move all cards
+                                        </Button>
                                     </div>
                                 ) : null}
 

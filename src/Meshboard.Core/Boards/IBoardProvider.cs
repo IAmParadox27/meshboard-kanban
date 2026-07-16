@@ -39,5 +39,10 @@
         Task<bool> RemoveAllIssuesAsync(
             Guid boardId,
             CancellationToken cancellationToken = default);
+        
+        Task<bool> MoveAllIssuesAsync(
+            Guid boardId,
+            MoveBoardIssuesRequest request,
+            CancellationToken cancellationToken = default);
     }
 }

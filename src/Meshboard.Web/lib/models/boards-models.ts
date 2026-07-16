@@ -52,3 +52,7 @@ export type BoardIssueAssignmentRequest = {
     sourceId: string;
     externalId: string;
 };
+
+export type MoveBoardIssuesRequest = {
+    targetBoardId: string;
+};

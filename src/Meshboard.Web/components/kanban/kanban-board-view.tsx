@@ -47,6 +47,7 @@ export function KanbanBoardView(
         isSavingBoardAssignment: false,
         error: null,
     });
+    const [m_moveTargetBoardId, setMoveTargetBoardId] = useState("");
 
     async function ClearCurrentBoard()
     {
@@ -83,6 +84,57 @@ export function KanbanBoardView(
                 error: error instanceof Error
                     ? error.message
                     : "Failed to clear board.",
+            }));
+        }
+    }
+
+    async function MoveAllFromCurrentBoard(targetBoardId: string)
+    {
+        if (!m_state.boardDefinition || m_state.boardDefinition.mode !== BoardModes.Curated)
+        {
+            return;
+        }
+
+        if (!targetBoardId || targetBoardId === m_state.boardDefinition.id)
+        {
+            return;
+        }
+
+        const targetBoard = m_state.curatedBoards.find((x) => x.id === targetBoardId);
+        const targetBoardName = targetBoard?.name ?? "the selected board";
+
+        const confirmed = window.confirm(
+            `Move all cards from ${m_state.boardDefinition.name} to ${targetBoardName}?`
+        );
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        setState((current) => ({
+            ...current,
+            isSavingBoardAssignment: true,
+            error: null,
+        }));
+
+        try
+        {
+            await apiClient.MoveAllIssues(m_state.boardDefinition.id, {
+                targetBoardId,
+            });
+
+            setMoveTargetBoardId("");
+            await LoadBoard(false);
+        }
+        catch (error)
+        {
+            setState((current) => ({
+                ...current,
+                isSavingBoardAssignment: false,
+                error: error instanceof Error
+                    ? error.message
+                    : "Failed to move board issues.",
             }));
         }
     }
@@ -280,6 +332,13 @@ export function KanbanBoardView(
         return null;
     }
 
+    const moveTargets = m_state.curatedBoards
+        .filter((x) => x.id !== m_state.boardDefinition?.id)
+        .map((x) => ({
+            id: x.id,
+            name: x.name,
+        }));
+
     return (
         <KanbanBoard
             key={`${boardId}:${m_state.boardRevision}`}
@@ -297,6 +356,11 @@ export function KanbanBoardView(
             onRemoveFromCurrentBoard={(card) => void RemoveFromCurrentBoard(card)}
             canClearCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
             onClearCurrentBoard={() => void ClearCurrentBoard()}
+            canMoveAllFromCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
+            moveTargets={moveTargets}
+            moveTargetBoardId={m_moveTargetBoardId}
+            onMoveTargetBoardIdChange={setMoveTargetBoardId}
+            onMoveAllFromCurrentBoard={(targetBoardId) => void MoveAllFromCurrentBoard(targetBoardId)}
         />
     );
 }

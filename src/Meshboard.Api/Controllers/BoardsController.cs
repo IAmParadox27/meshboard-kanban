@@ -129,5 +129,22 @@ namespace Meshboard.Api.Controllers
 
             return NoContent();
         }
+        
+        [HttpPost("{id:guid}/issues/move")]
+        public async Task<IActionResult> MoveAllIssues(
+            Guid id,
+            [FromBody] MoveBoardIssuesRequest request,
+            [FromServices] IBoardProvider boardProvider,
+            CancellationToken cancellationToken = default)
+        {
+            bool moved = await boardProvider.MoveAllIssuesAsync(id, request, cancellationToken);
+
+            if (!moved)
+            {
+                return BadRequest();
+            }
+
+            return NoContent();
+        }
     }
 }
