@@ -17,5 +17,25 @@ namespace Meshboard.Api.Controllers
             IReadOnlyList<ExternalIssue> issues = await externalIssueProvider.GetIssuesAsync(cancellationToken);
             return Ok(issues);
         }
+
+        [HttpGet("{sourceId:guid}/{externalId}")]
+        public async Task<ActionResult<ExternalIssueDetails>> GetIssueDetails(
+            Guid sourceId,
+            string externalId,
+            [FromServices] IExternalIssueProvider externalIssueProvider,
+            CancellationToken cancellationToken = default)
+        {
+            ExternalIssueDetails? details = await externalIssueProvider.GetIssueDetailsAsync(
+                sourceId,
+                externalId,
+                cancellationToken);
+
+            if (details == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(details);
+        }
     }
 }

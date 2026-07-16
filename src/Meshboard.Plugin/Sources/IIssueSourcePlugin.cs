@@ -14,5 +14,10 @@ namespace Meshboard.Plugin.Sources
         Task<IReadOnlyList<ExternalIssue>> GetIssuesAsync(
             SourceDefinitionModel source,
             CancellationToken cancellationToken = default);
+
+        Task<ExternalIssueDetails?> GetIssueDetailsAsync(
+            SourceDefinitionModel source,
+            ExternalIssue issue,
+            CancellationToken cancellationToken = default);
     }
 }

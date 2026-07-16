@@ -37,5 +37,34 @@ namespace Meshboard.Infrastructure.Issues
 
             return issues;
         }
+
+        public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
+            Guid sourceId,
+            string externalId,
+            CancellationToken cancellationToken = default)
+        {
+            SourceDefinitionModel? source = await m_sourceProvider.GetByIdAsync(sourceId, cancellationToken);
+
+            if (source == null || !source.Enabled)
+            {
+                return null;
+            }
+
+            if (!m_plugins.TryGetValue(source.ProviderKey, out IIssueSourcePlugin? plugin))
+            {
+                return null;
+            }
+
+            IReadOnlyList<ExternalIssue> sourceIssues = await plugin.GetIssuesAsync(source, cancellationToken);
+            ExternalIssue? issue = sourceIssues.FirstOrDefault(
+                x => string.Equals(x.ExternalId, externalId, StringComparison.OrdinalIgnoreCase));
+
+            if (issue == null)
+            {
+                return null;
+            }
+
+            return await plugin.GetIssueDetailsAsync(source, issue, cancellationToken);
+        }
     }
 }

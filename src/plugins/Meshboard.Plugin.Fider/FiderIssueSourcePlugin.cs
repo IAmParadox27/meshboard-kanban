@@ -2,9 +2,7 @@
 using System.Net.Http.Json;
 using Meshboard.Core.Issues;
 using Meshboard.Core.Sources;
-using Meshboard.Plugin.Fider.Config;
 using Meshboard.Plugin.Sources;
-using Microsoft.Extensions.Options;
 
 namespace Meshboard.Plugin.Fider
 {
@@ -15,7 +13,7 @@ namespace Meshboard.Plugin.Fider
         private readonly IHttpClientFactory m_httpClientFactory;
 
         public string SourceKey => "fider";
-        
+
         public string DisplayName => "Fider";
 
         public FiderIssueSourcePlugin(IHttpClientFactory httpClientFactory)
@@ -70,26 +68,12 @@ namespace Meshboard.Plugin.Fider
             CancellationToken cancellationToken = default)
         {
             FiderSourceConfig config = GetConfig(source);
+            HttpClient client = CreateClient(config);
 
-            HttpClient client = m_httpClientFactory.CreateClient();
-            client.BaseAddress = new Uri(config.BaseUrl);
-
-            client.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json"));
-
-            if (!string.IsNullOrWhiteSpace(config.ApiKey))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", config.ApiKey);
-            }
-            else
-            {
-                // Remove any existing auth header
-                client.DefaultRequestHeaders.Authorization = null;
-            }
-
-            List<FiderPostResponse>? posts = await client.GetFromJsonAsync<List<FiderPostResponse>>(
-                "api/v1/posts?view=all&limit=100",cancellationToken);
+            List<FiderPostResponse>? posts = await TryGetFromJsonAsync<List<FiderPostResponse>>(
+                client,
+                c_postsPath,
+                cancellationToken);
 
             if (posts == null)
             {
@@ -101,11 +85,68 @@ namespace Meshboard.Plugin.Fider
                 .ToArray();
         }
 
-        private ExternalIssue MapIssue(SourceDefinitionModel source,
+        public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
+            SourceDefinitionModel source,
+            ExternalIssue issue,
+            CancellationToken cancellationToken = default)
+        {
+            FiderSourceConfig config = GetConfig(source);
+            HttpClient client = CreateClient(config);
+
+            FiderPostResponse? post = await TryGetFromJsonAsync<FiderPostResponse>(
+                client,
+                $"api/v1/posts/{Uri.EscapeDataString(issue.IssueNumber)}",
+                cancellationToken);
+
+            if (post == null)
+            {
+                return CreateFallbackDetails(issue);
+            }
+
+            List<FiderCommentResponse>? comments = await TryGetFromJsonAsync<List<FiderCommentResponse>>(
+                client,
+                $"api/v1/posts/{Uri.EscapeDataString(issue.IssueNumber)}/comments",
+                cancellationToken);
+
+            ExternalIssue mappedIssue = MapIssue(source, config, post);
+            IReadOnlyList<ExternalIssueComment> mappedComments = BuildComments(post, comments ?? []);
+
+            return new ExternalIssueDetails
+            {
+                Issue = mappedIssue,
+                Comments = mappedComments,
+                Activity = BuildActivity(mappedIssue, post, comments ?? []),
+            };
+        }
+
+        private HttpClient CreateClient(FiderSourceConfig config)
+        {
+            HttpClient client = m_httpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(EnsureTrailingSlash(config.BaseUrl));
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+
+            if (!string.IsNullOrWhiteSpace(config.ApiKey))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", config.ApiKey);
+            }
+            else
+            {
+                client.DefaultRequestHeaders.Authorization = null;
+            }
+
+            return client;
+        }
+
+        private static ExternalIssue MapIssue(
+            SourceDefinitionModel source,
             FiderSourceConfig config,
             FiderPostResponse issue)
         {
             string sourceColumn = issue.Status;
+            DateTimeOffset? updatedAt = issue.Response?.RespondedAt ?? issue.CreatedAt;
 
             return new ExternalIssue
             {
@@ -117,14 +158,200 @@ namespace Meshboard.Plugin.Fider
                 Status = sourceColumn,
                 SourceColumn = sourceColumn,
                 BoardColumnId = GetMappedBoardColumn(config.ColumnMappings, sourceColumn),
-                Url = $"{config.BaseUrl}/posts/{issue.Number}",
+                Url = BuildPostUrl(config.BaseUrl, issue.Number),
                 Reporter = issue.User?.Name,
                 CreatedAt = issue.CreatedAt,
-                UpdatedAt = issue.CreatedAt,
+                UpdatedAt = updatedAt,
                 Labels = issue.Tags
                     .Where(tag => !string.IsNullOrWhiteSpace(tag))
                     .ToArray(),
             };
+        }
+
+        private static ExternalIssueDetails CreateFallbackDetails(ExternalIssue issue)
+        {
+            return new ExternalIssueDetails
+            {
+                Issue = issue,
+                Comments = [],
+                Activity = BuildFallbackActivity(issue),
+            };
+        }
+
+        private static IReadOnlyList<ExternalIssueComment> BuildComments(
+            FiderPostResponse post,
+            IReadOnlyList<FiderCommentResponse> comments)
+        {
+            List<ExternalIssueComment> mappedComments = [];
+
+            if (!string.IsNullOrWhiteSpace(post.Response?.Text))
+            {
+                mappedComments.Add(new ExternalIssueComment
+                {
+                    Id = $"response:{post.Id}",
+                    Kind = "response",
+                    Author = MapActor(post.Response.User),
+                    Body = post.Response.Text ?? string.Empty,
+                    CreatedAt = post.Response.RespondedAt,
+                    UpdatedAt = post.Response.RespondedAt,
+                });
+            }
+
+            mappedComments.AddRange(comments.Select(comment => new ExternalIssueComment
+            {
+                Id = comment.Id.ToString(),
+                Kind = "comment",
+                Author = MapActor(comment.User),
+                Body = comment.Content ?? string.Empty,
+                CreatedAt = comment.CreatedAt,
+                UpdatedAt = comment.EditedAt ?? comment.CreatedAt,
+            }));
+
+            return mappedComments
+                .OrderBy(x => x.CreatedAt ?? DateTimeOffset.MinValue)
+                .ToArray();
+        }
+
+        private static IReadOnlyList<ExternalIssueActivityEntry> BuildActivity(
+            ExternalIssue issue,
+            FiderPostResponse post,
+            IReadOnlyList<FiderCommentResponse> comments)
+        {
+            List<ExternalIssueActivityEntry> activity = [];
+
+            if (issue.CreatedAt != null)
+            {
+                activity.Add(new ExternalIssueActivityEntry
+                {
+                    Id = $"{issue.ExternalId}:created",
+                    Type = "created",
+                    Description = string.IsNullOrWhiteSpace(issue.Reporter)
+                        ? "Post created"
+                        : $"{issue.Reporter} created this post",
+                    CreatedAt = issue.CreatedAt,
+                    Actor = CreateActor(issue.Reporter),
+                });
+            }
+
+            if (post.Response?.RespondedAt != null)
+            {
+                activity.Add(new ExternalIssueActivityEntry
+                {
+                    Id = $"{issue.ExternalId}:responded",
+                    Type = "responded",
+                    Description = string.IsNullOrWhiteSpace(post.Response.User?.Name)
+                        ? "Official response posted"
+                        : $"{post.Response.User.Name} responded",
+                    CreatedAt = post.Response.RespondedAt,
+                    Actor = MapActor(post.Response.User),
+                });
+            }
+
+            activity.AddRange(comments
+                .Where(x => x.EditedAt != null)
+                .Select(x => new ExternalIssueActivityEntry
+                {
+                    Id = $"comment:{x.Id}:edited",
+                    Type = "comment-edited",
+                    Description = string.IsNullOrWhiteSpace(x.EditedBy?.Name)
+                        ? "Comment edited"
+                        : $"{x.EditedBy.Name} edited a comment",
+                    CreatedAt = x.EditedAt,
+                    Actor = MapActor(x.EditedBy),
+                }));
+
+            return activity
+                .OrderBy(x => x.CreatedAt ?? DateTimeOffset.MinValue)
+                .ToArray();
+        }
+
+        private static IReadOnlyList<ExternalIssueActivityEntry> BuildFallbackActivity(ExternalIssue issue)
+        {
+            List<ExternalIssueActivityEntry> activity = [];
+
+            if (issue.CreatedAt != null)
+            {
+                activity.Add(new ExternalIssueActivityEntry
+                {
+                    Id = $"{issue.ExternalId}:created",
+                    Type = "created",
+                    Description = string.IsNullOrWhiteSpace(issue.Reporter)
+                        ? "Post created"
+                        : $"{issue.Reporter} created this post",
+                    CreatedAt = issue.CreatedAt,
+                    Actor = CreateActor(issue.Reporter),
+                });
+            }
+
+            if (issue.UpdatedAt != null && issue.CreatedAt != issue.UpdatedAt)
+            {
+                activity.Add(new ExternalIssueActivityEntry
+                {
+                    Id = $"{issue.ExternalId}:updated",
+                    Type = "updated",
+                    Description = "Post updated",
+                    CreatedAt = issue.UpdatedAt,
+                    Actor = null,
+                });
+            }
+
+            return activity;
+        }
+
+        private static ExternalIssueActor? CreateActor(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            return new ExternalIssueActor
+            {
+                Name = name,
+                Username = null,
+            };
+        }
+
+        private static ExternalIssueActor? MapActor(FiderUserResponse? user)
+        {
+            if (user == null || string.IsNullOrWhiteSpace(user.Name))
+            {
+                return null;
+            }
+
+            return new ExternalIssueActor
+            {
+                Name = user.Name,
+                Username = null,
+            };
+        }
+
+        private static async Task<T?> TryGetFromJsonAsync<T>(
+            HttpClient client,
+            string requestUri,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await client.GetFromJsonAsync<T>(requestUri, cancellationToken);
+            }
+            catch (HttpRequestException)
+            {
+                return default;
+            }
+        }
+
+        private static string BuildPostUrl(string baseUrl, int postNumber)
+        {
+            Uri rootUri = new Uri(EnsureTrailingSlash(baseUrl));
+            return new Uri(rootUri, $"posts/{postNumber}").ToString();
+        }
+
+        private static string EnsureTrailingSlash(string value)
+        {
+            return value.EndsWith("/", StringComparison.Ordinal)
+                ? value
+                : $"{value}/";
         }
 
         private static string GetRequiredConfig(SourceDefinitionModel source, string key)
@@ -153,7 +380,7 @@ namespace Meshboard.Plugin.Fider
                     x => x.Value,
                     StringComparer.OrdinalIgnoreCase);
         }
-        
+
         private static string? GetMappedBoardColumn(
             Dictionary<string, string> columnMappings,
             string sourceColumn)

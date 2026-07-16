@@ -1,19 +1,24 @@
 ﻿export type KanbanUserModel = {
     name: string;
     initials: string;
+    username?: string;
 };
 
 export type KanbanCommentModel = {
     id: string;
+    kind: "comment" | "response";
     author: KanbanUserModel;
     body: string;
     createdAt: string;
+    updatedAt?: string;
 };
 
 export type KanbanActivityModel = {
     id: string;
+    type?: string;
     description: string;
     createdAt: string;
+    actor?: KanbanUserModel;
 };
 
 export type KanbanCardModel = {

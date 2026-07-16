@@ -1,4 +1,4 @@
-﻿import { ExternalIssueModel } from "@/lib/models/external-issue";
+﻿import { ExternalIssueDetailsModel, ExternalIssueModel } from "@/lib/models/external-issue";
 import {
     SourceDefinitionModel,
     SourcesPageModel,
@@ -92,6 +92,15 @@ export class ApiClient
     public async GetIssues(): Promise<ExternalIssueModel[]>
     {
         return await this.Get<ExternalIssueModel[]>("/api/issues");
+    }
+
+    public async GetIssueDetails(
+        sourceId: string,
+        externalId: string,
+    ): Promise<ExternalIssueDetailsModel>
+    {
+        const encodedExternalId = encodeURIComponent(externalId);
+        return await this.Get<ExternalIssueDetailsModel>(`/api/issues/${sourceId}/${encodedExternalId}`);
     }
 
     private async Get<T>(path: string): Promise<T>
