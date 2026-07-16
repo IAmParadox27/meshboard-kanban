@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     DndContext,
     DragEndEvent,
@@ -8,7 +8,7 @@ import {
     DragOverlay,
     DragStartEvent,
     PointerSensor,
-    closestCorners,
+    pointerWithin,
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
@@ -89,7 +89,7 @@ export function KanbanBoard(
     const m_sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8,
+                distance: 3,
             },
         }),
     );
@@ -156,25 +156,33 @@ export function KanbanBoard(
         );
     }, [boardId, m_visibleCollapsedColumnIds]);
 
-    function ToggleColumnCollapsed(columnId: string)
-    {
+    const CancelHoverExpand = useCallback(() => {
+        if (m_hoverExpandTimerRef.current != null)
+        {
+            window.clearTimeout(m_hoverExpandTimerRef.current);
+            m_hoverExpandTimerRef.current = null;
+        }
+
+        setHoverExpandColumnId(null);
+    }, []);
+
+    const ToggleColumnCollapsed = useCallback((columnId: string) => {
         CancelHoverExpand();
 
         setCollapsedColumnIds((current) => ({
             ...current,
             [columnId]: !current[columnId],
         }));
-    }
+    }, [CancelHoverExpand]);
 
-    function ExpandColumn(columnId: string)
-    {
+    const ExpandColumn = useCallback((columnId: string) => {
         CancelHoverExpand();
 
         setCollapsedColumnIds((current) => ({
             ...current,
             [columnId]: false,
         }));
-    }
+    }, [CancelHoverExpand]);
 
     function CollapseAllColumns()
     {
@@ -194,19 +202,7 @@ export function KanbanBoard(
         );
     }
 
-    function CancelHoverExpand()
-    {
-        if (m_hoverExpandTimerRef.current != null)
-        {
-            window.clearTimeout(m_hoverExpandTimerRef.current);
-            m_hoverExpandTimerRef.current = null;
-        }
-
-        setHoverExpandColumnId(null);
-    }
-
-    function ScheduleHoverExpand(columnId: string)
-    {
+    const ScheduleHoverExpand = useCallback((columnId: string) => {
         if (m_hoverExpandColumnId === columnId)
         {
             return;
@@ -223,7 +219,11 @@ export function KanbanBoard(
             setHoverExpandColumnId(null);
             m_hoverExpandTimerRef.current = null;
         }, 350);
-    }
+    }, [CancelHoverExpand, m_hoverExpandColumnId]);
+
+    const HandleCardClick = useCallback((card: KanbanCardModel) => {
+        setSelectedCardId(card.id);
+    }, []);
 
     function FindCardLocation(cardId: string) {
         for (const column of m_columns) {
@@ -358,7 +358,7 @@ export function KanbanBoard(
         <>
             <DndContext
                 sensors={m_sensors}
-                collisionDetection={closestCorners}
+                collisionDetection={pointerWithin}
                 onDragStart={HandleDragStart}
                 onDragOver={HandleDragOver}
                 onDragEnd={HandleDragEnd}
@@ -524,10 +524,10 @@ export function KanbanBoard(
                                     <KanbanColumn
                                         key={column.id}
                                         column={column}
-                                        isCollapsed={m_collapsedColumnIds[column.id] === true}
-                                        onToggleCollapsed={() => ToggleColumnCollapsed(column.id)}
-                                        onExpand={() => ExpandColumn(column.id)}
-                                        onCardClick={(card) => setSelectedCardId(card.id)}
+                                        isCollapsed={m_visibleCollapsedColumnIds[column.id] === true}
+                                        onToggleCollapsed={ToggleColumnCollapsed}
+                                        onExpand={ExpandColumn}
+                                        onCardClick={HandleCardClick}
                                         curatedBoards={curatedBoards}
                                         isSavingBoardAssignment={isSavingBoardAssignment}
                                         onAddToBoard={onAddToBoard}

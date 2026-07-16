@@ -1,5 +1,5 @@
 "use client";
-
+import { memo } from "react";
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 
@@ -45,7 +45,7 @@ const statusVariantMap: Record<KanbanCardModel["status"], "default" | "secondary
     error: "destructive",
 };
 
-function KanbanCardContent(
+const KanbanCardContent = memo(function KanbanCardContent(
     {
         card,
         curatedBoards = [],
@@ -160,9 +160,9 @@ function KanbanCardContent(
             </CardContent>
         </Card>
     );
-}
+});
 
-export function KanbanCard(
+export const KanbanCard = memo(function KanbanCard(
     {
         card,
         onClick,
@@ -198,7 +198,7 @@ export function KanbanCard(
 
     if (dragOverlay) {
         return (
-            <div className="w-[280px] rotate-10 shadow-2xl">
+            <div className="w-[280px] rotate-10 shadow-xl">
                 <KanbanCardContent
                     card={card}
                     curatedBoards={curatedBoards}
@@ -228,7 +228,7 @@ export function KanbanCard(
                 {...attributes}
                 {...listeners}
             >
-                <div className={isDragging ? "rotate-2 scale-[1.02]" : ""}>
+                <div className={isDragging ? "scale-[1.01]" : ""}>
                     <KanbanCardContent
                         card={card}
                         curatedBoards={curatedBoards}
@@ -239,4 +239,4 @@ export function KanbanCard(
             </div>
         </div>
     );
-}
+});

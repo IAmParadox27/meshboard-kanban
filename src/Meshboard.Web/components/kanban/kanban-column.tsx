@@ -10,12 +10,13 @@ import { Separator } from "@/components/ui/separator";
 
 import { KanbanCard } from "./kanban-card";
 import { KanbanCardModel, KanbanColumnModel } from "./kanban-types";
+import {memo} from "react";
 
 type KanbanColumnProps = {
     column: KanbanColumnModel;
     isCollapsed: boolean;
-    onToggleCollapsed: () => void;
-    onExpand: () => void;
+    onToggleCollapsed: (columnId: string) => void;
+    onExpand: (columnId: string) => void;
     onCardClick: (card: KanbanCardModel) => void;
     curatedBoards: CuratedBoardActionModel[];
     isSavingBoardAssignment: boolean;
@@ -27,7 +28,7 @@ type CuratedBoardActionModel = {
     name: string;
 };
 
-export function KanbanColumn(
+export const KanbanColumn = memo(function KanbanColumn(
     {
         column,
         isCollapsed,
@@ -60,7 +61,7 @@ export function KanbanColumn(
                     variant="ghost"
                     size="icon"
                     className="mb-3 h-8 w-8 shrink-0"
-                    onClick={onExpand}
+                    onClick={() => onExpand(column.id)}
                     aria-label={`Expand ${column.title}`}
                     title={`Expand ${column.title}`}
                 >
@@ -70,7 +71,7 @@ export function KanbanColumn(
                 <button
                     type="button"
                     className="flex min-h-0 flex-1 items-center justify-center rounded-md px-1 text-center text-sm font-semibold tracking-tight text-foreground/90 transition-colors hover:bg-accent/50"
-                    onClick={onExpand}
+                    onClick={() => onExpand(column.id)}
                     aria-label={`Expand ${column.title}`}
                     title={`Expand ${column.title}`}
                 >
@@ -112,7 +113,7 @@ export function KanbanColumn(
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 shrink-0"
-                    onClick={onToggleCollapsed}
+                    onClick={() => onToggleCollapsed(column.id)}
                     aria-label={`Collapse ${column.title}`}
                     title={`Collapse ${column.title}`}
                 >
@@ -145,4 +146,4 @@ export function KanbanColumn(
             </div>
         </section>
     );
-}
+});
