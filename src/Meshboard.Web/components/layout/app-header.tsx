@@ -10,6 +10,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 type AppHeaderProps = {
     title?: string;
@@ -73,6 +74,8 @@ export function AppHeader(
                     >
                         New card
                     </Button>
+
+                    <ThemeToggle />
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
