@@ -324,6 +324,7 @@ export function KanbanBoardView(
     return (
         <KanbanBoard
             key={`${boardId}:${m_state.boardRevision}`}
+            boardId={boardId}
             {...m_state.board}
             curatedBoards={m_state.curatedBoards
                 .filter((x) => x.id !== m_state.boardDefinition?.id)

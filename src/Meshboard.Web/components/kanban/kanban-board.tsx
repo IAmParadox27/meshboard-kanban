@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     DndContext,
     DragEndEvent,
@@ -33,6 +33,7 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanBoardModel, KanbanCardModel, KanbanColumnModel } from "./kanban-types";
 
 type KanbanBoardProps = KanbanBoardModel & {
+    boardId: string;
     curatedBoards: CuratedBoardActionModel[];
     canRemoveFromCurrentBoard: boolean;
     isSavingBoardAssignment: boolean;
@@ -55,6 +56,7 @@ type CuratedBoardActionModel = {
 
 export function KanbanBoard(
     {
+        boardId,
         title,
         description,
         columns,
@@ -78,6 +80,11 @@ export function KanbanBoard(
     const [m_activeCardId, setActiveCardId] = useState<string | null>(null);
     const [m_isClearDialogOpen, setIsClearDialogOpen] = useState(false);
     const [m_isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+    const [m_collapsedColumnIds, setCollapsedColumnIds] = useState<Record<string, boolean>>(() => {
+        return ReadCollapsedColumnIds(boardId, columns);
+    });
+    const [m_hoverExpandColumnId, setHoverExpandColumnId] = useState<string | null>(null);
+    const m_hoverExpandTimerRef = useRef<number | null>(null);
 
     const m_sensors = useSensors(
         useSensor(PointerSensor, {
@@ -115,6 +122,109 @@ export function KanbanBoard(
         return moveTargets.find((x) => x.id === moveTargetBoardId) ?? null;
     }, [moveTargetBoardId, moveTargets]);
 
+    const m_visibleCollapsedColumnIds = useMemo(() => {
+        const validColumnIds = new Set(m_columns.map((column) => column.id));
+
+        return Object.fromEntries(
+            Object.entries(m_collapsedColumnIds)
+                .filter(([columnId, isCollapsed]) => validColumnIds.has(columnId) && isCollapsed === true),
+        );
+    }, [m_columns, m_collapsedColumnIds]);
+
+    const m_allColumnsCollapsed = useMemo(() => {
+        return m_columns.length > 0
+            && m_columns.every((column) => m_visibleCollapsedColumnIds[column.id] === true);
+    }, [m_columns, m_visibleCollapsedColumnIds]);
+
+    const m_hasCollapsedColumns = useMemo(() => {
+        return m_columns.some((column) => m_visibleCollapsedColumnIds[column.id] === true);
+    }, [m_columns, m_visibleCollapsedColumnIds]);
+
+    useEffect(() => {
+        return () => {
+            if (m_hoverExpandTimerRef.current != null)
+            {
+                window.clearTimeout(m_hoverExpandTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            GetCollapsedColumnsStorageKey(boardId),
+            JSON.stringify(m_visibleCollapsedColumnIds),
+        );
+    }, [boardId, m_visibleCollapsedColumnIds]);
+
+    function ToggleColumnCollapsed(columnId: string)
+    {
+        CancelHoverExpand();
+
+        setCollapsedColumnIds((current) => ({
+            ...current,
+            [columnId]: !current[columnId],
+        }));
+    }
+
+    function ExpandColumn(columnId: string)
+    {
+        CancelHoverExpand();
+
+        setCollapsedColumnIds((current) => ({
+            ...current,
+            [columnId]: false,
+        }));
+    }
+
+    function CollapseAllColumns()
+    {
+        CancelHoverExpand();
+
+        setCollapsedColumnIds(
+            Object.fromEntries(m_columns.map((column) => [column.id, true])),
+        );
+    }
+
+    function ExpandAllColumns()
+    {
+        CancelHoverExpand();
+
+        setCollapsedColumnIds(
+            Object.fromEntries(m_columns.map((column) => [column.id, false])),
+        );
+    }
+
+    function CancelHoverExpand()
+    {
+        if (m_hoverExpandTimerRef.current != null)
+        {
+            window.clearTimeout(m_hoverExpandTimerRef.current);
+            m_hoverExpandTimerRef.current = null;
+        }
+
+        setHoverExpandColumnId(null);
+    }
+
+    function ScheduleHoverExpand(columnId: string)
+    {
+        if (m_hoverExpandColumnId === columnId)
+        {
+            return;
+        }
+
+        CancelHoverExpand();
+        setHoverExpandColumnId(columnId);
+
+        m_hoverExpandTimerRef.current = window.setTimeout(() => {
+            setCollapsedColumnIds((current) => ({
+                ...current,
+                [columnId]: false,
+            }));
+            setHoverExpandColumnId(null);
+            m_hoverExpandTimerRef.current = null;
+        }, 350);
+    }
+
     function FindCardLocation(cardId: string) {
         for (const column of m_columns) {
             const cardIndex = column.cards.findIndex((x) => x.id == cardId);
@@ -139,7 +249,17 @@ export function KanbanBoard(
         const overId = event.over ? String(event.over.id) : null;
 
         if (!overId) {
+            CancelHoverExpand();
             return;
+        }
+
+        const overColumn = m_columns.find((x) => x.id == overId);
+
+        if (overColumn && m_visibleCollapsedColumnIds[overColumn.id] === true) {
+            ScheduleHoverExpand(overColumn.id);
+        }
+        else {
+            CancelHoverExpand();
         }
 
         const activeLocation = FindCardLocation(activeId);
@@ -148,7 +268,6 @@ export function KanbanBoard(
             return;
         }
 
-        const overColumn = m_columns.find((x) => x.id == overId);
         const overLocation = FindCardLocation(overId);
 
         const destinationColumnId = overLocation?.columnId ?? overColumn?.id;
@@ -199,6 +318,7 @@ export function KanbanBoard(
         const activeId = String(event.active.id);
         const overId = event.over ? String(event.over.id) : null;
 
+        CancelHoverExpand();
         setActiveCardId(null);
 
         if (!overId) {
@@ -372,26 +492,48 @@ export function KanbanBoard(
                                     </AlertDialog>
                                 ) : null}
 
+                                <Button
+                                    variant="outline"
+                                    onClick={CollapseAllColumns}
+                                    disabled={m_allColumnsCollapsed}
+                                >
+                                    Collapse all
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    onClick={ExpandAllColumns}
+                                    disabled={!m_hasCollapsedColumns}
+                                >
+                                    Expand all
+                                </Button>
+
                                 <Button variant="outline">
                                     Filter
                                 </Button>
 
-                                <Button>New card
+                                <Button>
+                                    New card
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="flex min-h-0 flex-1 items-stretch gap-6 overflow-x-auto pb-4">
-                            {m_columns.map((column) => (
-                                <KanbanColumn
-                                    key={column.id}
-                                    column={column}
-                                    onCardClick={(card) => setSelectedCardId(card.id)}
-                                    curatedBoards={curatedBoards}
-                                    isSavingBoardAssignment={isSavingBoardAssignment}
-                                    onAddToBoard={onAddToBoard}
-                                />
-                            ))}
+                        <div className="min-h-0 flex-1 overflow-x-auto pb-4">
+                            <div className="flex h-full min-w-full items-stretch gap-4">
+                                {m_columns.map((column) => (
+                                    <KanbanColumn
+                                        key={column.id}
+                                        column={column}
+                                        isCollapsed={m_collapsedColumnIds[column.id] === true}
+                                        onToggleCollapsed={() => ToggleColumnCollapsed(column.id)}
+                                        onExpand={() => ExpandColumn(column.id)}
+                                        onCardClick={(card) => setSelectedCardId(card.id)}
+                                        curatedBoards={curatedBoards}
+                                        isSavingBoardAssignment={isSavingBoardAssignment}
+                                        onAddToBoard={onAddToBoard}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </main>
@@ -426,4 +568,42 @@ export function KanbanBoard(
             />
         </>
     );
+}
+
+function GetCollapsedColumnsStorageKey(boardId: string)
+{
+    return `meshboard:kanban:${boardId}:collapsed-columns`;
+}
+
+function ReadCollapsedColumnIds(
+    boardId: string,
+    columns: KanbanColumnModel[],
+): Record<string, boolean>
+{
+    if (typeof window === "undefined")
+    {
+        return {};
+    }
+
+    try
+    {
+        const rawValue = window.localStorage.getItem(GetCollapsedColumnsStorageKey(boardId));
+
+        if (!rawValue)
+        {
+            return {};
+        }
+
+        const parsedValue = JSON.parse(rawValue) as Record<string, boolean>;
+        const validColumnIds = new Set(columns.map((column) => column.id));
+
+        return Object.fromEntries(
+            Object.entries(parsedValue)
+                .filter(([columnId, isCollapsed]) => validColumnIds.has(columnId) && isCollapsed === true),
+        );
+    }
+    catch
+    {
+        return {};
+    }
 }

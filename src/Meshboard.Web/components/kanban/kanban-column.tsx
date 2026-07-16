@@ -1,15 +1,21 @@
 "use client";
 
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 
-import { ScrollArea } from "@/components/ui/scroll-area";import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 import { KanbanCard } from "./kanban-card";
 import { KanbanCardModel, KanbanColumnModel } from "./kanban-types";
 
 type KanbanColumnProps = {
     column: KanbanColumnModel;
+    isCollapsed: boolean;
+    onToggleCollapsed: () => void;
+    onExpand: () => void;
     onCardClick: (card: KanbanCardModel) => void;
     curatedBoards: CuratedBoardActionModel[];
     isSavingBoardAssignment: boolean;
@@ -24,13 +30,17 @@ type CuratedBoardActionModel = {
 export function KanbanColumn(
     {
         column,
+        isCollapsed,
+        onToggleCollapsed,
+        onExpand,
         onCardClick,
         curatedBoards,
         isSavingBoardAssignment,
         onAddToBoard,
     }: KanbanColumnProps,
-) {
-    const {setNodeRef} = useDroppable({
+)
+{
+    const { setNodeRef, isOver } = useDroppable({
         id: column.id,
         data: {
             type: "column",
@@ -38,8 +48,54 @@ export function KanbanColumn(
         },
     });
 
+    if (isCollapsed)
+    {
+        return (
+            <section
+                ref={setNodeRef}
+                className={`flex h-full min-w-[64px] max-w-[64px] flex-col items-center rounded-xl border bg-card px-2 py-3 transition-colors ${isOver ? "border-primary bg-primary/10 shadow-sm" : ""}`}
+            >
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="mb-3 h-8 w-8 shrink-0"
+                    onClick={onExpand}
+                    aria-label={`Expand ${column.title}`}
+                    title={`Expand ${column.title}`}
+                >
+                    <PanelLeftOpenIcon className="h-4 w-4" />
+                </Button>
+
+                <button
+                    type="button"
+                    className="flex min-h-0 flex-1 items-center justify-center rounded-md px-1 text-center text-sm font-semibold tracking-tight text-foreground/90 transition-colors hover:bg-accent/50"
+                    onClick={onExpand}
+                    aria-label={`Expand ${column.title}`}
+                    title={`Expand ${column.title}`}
+                >
+                    <span
+                        style={{
+                            writingMode: "vertical-rl",
+                            transform: "rotate(180deg)",
+                        }}
+                    >
+                        {column.title}
+                    </span>
+                </button>
+
+                <div className="mt-3 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                    {column.cards.length} card{column.cards.length === 1 ? "" : "s"}
+                </div>
+            </section>
+        );
+    }
+
     return (
-        <section className="flex h-full min-w-[320px] max-w-[320px] flex-col rounded-xl border bg-card">
+        <section
+            ref={setNodeRef}
+            className={`flex h-full min-w-[320px] flex-1 basis-0 flex-col rounded-xl border bg-card transition-colors ${isOver ? "border-primary bg-primary/5" : ""}`}
+        >
             <div className="flex shrink-0 items-center justify-between px-4 py-4">
                 <div>
                     <h2 className="text-sm font-semibold tracking-tight">
@@ -47,14 +103,26 @@ export function KanbanColumn(
                     </h2>
 
                     <p className="text-xs text-muted-foreground">
-                        {column.cards.length} card{column.cards.length == 1 ? "" : "s"}
+                        {column.cards.length} card{column.cards.length === 1 ? "" : "s"}
                     </p>
                 </div>
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={onToggleCollapsed}
+                    aria-label={`Collapse ${column.title}`}
+                    title={`Collapse ${column.title}`}
+                >
+                    <PanelLeftCloseIcon className="h-4 w-4" />
+                </Button>
             </div>
 
-            <Separator/>
+            <Separator />
 
-            <div className="min-h-0 flex-1" ref={setNodeRef}>
+            <div className="min-h-0 flex-1">
                 <ScrollArea className="h-full">
                     <div className="space-y-4 p-4">
                         <SortableContext
