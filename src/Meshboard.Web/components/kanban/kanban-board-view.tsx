@@ -48,6 +48,45 @@ export function KanbanBoardView(
         error: null,
     });
 
+    async function ClearCurrentBoard()
+    {
+        if (!m_state.boardDefinition || m_state.boardDefinition.mode !== BoardModes.Curated)
+        {
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `Remove all cards from ${m_state.boardDefinition.name}?`
+        );
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        setState((current) => ({
+            ...current,
+            isSavingBoardAssignment: true,
+            error: null,
+        }));
+
+        try
+        {
+            await apiClient.ClearBoard(m_state.boardDefinition.id);
+            await LoadBoard(false);
+        }
+        catch (error)
+        {
+            setState((current) => ({
+                ...current,
+                isSavingBoardAssignment: false,
+                error: error instanceof Error
+                    ? error.message
+                    : "Failed to clear board.",
+            }));
+        }
+    }
+
     function RemoveCardFromVisibleBoard(cardId: string)
     {
         setState((current) => {
@@ -256,6 +295,8 @@ export function KanbanBoardView(
             isRefreshing={m_state.isRefreshing}
             onAddToBoard={(targetBoardId, card) => void AddToBoard(targetBoardId, card)}
             onRemoveFromCurrentBoard={(card) => void RemoveFromCurrentBoard(card)}
+            canClearCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
+            onClearCurrentBoard={() => void ClearCurrentBoard()}
         />
     );
 }

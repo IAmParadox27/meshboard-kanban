@@ -113,5 +113,21 @@ namespace Meshboard.Api.Controllers
 
             return NoContent();
         }
+        
+        [HttpDelete("{id:guid}/clear")]
+        public async Task<IActionResult> RemoveAllIssues(
+            Guid id,
+            [FromServices] IBoardProvider boardProvider,
+            CancellationToken cancellationToken)
+        {
+            bool removed = await boardProvider.RemoveAllIssuesAsync(id, cancellationToken);
+
+            if (!removed)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
     }
 }

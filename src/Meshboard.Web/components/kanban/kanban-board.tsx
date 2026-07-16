@@ -29,6 +29,8 @@ type KanbanBoardProps = KanbanBoardModel & {
     onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
     onRemoveFromCurrentBoard: (card: KanbanCardModel) => void;
     isRefreshing: boolean;
+    canClearCurrentBoard: boolean;
+    onClearCurrentBoard: () => void;
 };
 
 type CuratedBoardActionModel = {
@@ -47,6 +49,8 @@ export function KanbanBoard(
         onAddToBoard,
         onRemoveFromCurrentBoard,
         isRefreshing,
+        canClearCurrentBoard,
+        onClearCurrentBoard,
     }: KanbanBoardProps,
 ) {
     const [m_columns, setColumns] = useState<KanbanColumnModel[]>(columns);
@@ -236,6 +240,16 @@ export function KanbanBoard(
                                         <Spinner className="size-4" />
                                         Refreshing…
                                     </div>
+                                ) : null}
+
+                                {canClearCurrentBoard ? (
+                                    <Button
+                                        variant="destructive"
+                                        onClick={onClearCurrentBoard}
+                                        disabled={isSavingBoardAssignment}
+                                    >
+                                        Remove all cards
+                                    </Button>
                                 ) : null}
 
                                 <Button variant="outline">

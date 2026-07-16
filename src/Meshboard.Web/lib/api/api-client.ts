@@ -55,6 +55,11 @@ export class ApiClient
         await this.Send<void>(`/api/boards/${boardId}/issues`, "DELETE", request);
     }
 
+    public async ClearBoard(boardId: string): Promise<void>
+    {
+        await this.Send<void>(`/api/boards/${boardId}/clear`, "DELETE");
+    }
+
     public async GetSourcesPage(): Promise<SourcesPageModel>
     {
         return await this.Get<SourcesPageModel>("/api/sources");

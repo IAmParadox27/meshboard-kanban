@@ -418,5 +418,28 @@ namespace Meshboard.Infrastructure.Boards
                 UpdatedAt = board.UpdatedAt,
             };
         }
+        
+        public async Task<bool> RemoveAllIssuesAsync(
+            Guid boardId,
+            CancellationToken cancellationToken = default)
+        {
+            BoardDefinition? board = await m_dbContext
+                .Set<BoardDefinition>()
+                .FirstOrDefaultAsync(x => x.Id == boardId, cancellationToken);
+
+            if (board == null || board.Mode != BoardMode.Curated)
+            {
+                return false;
+            }
+
+            List<BoardIssueAssignment> assignments = await m_dbContext
+                .Set<BoardIssueAssignment>()
+                .Where(x => x.BoardId == boardId)
+                .ToListAsync(cancellationToken);
+
+            m_dbContext.Set<BoardIssueAssignment>().RemoveRange(assignments);
+            await m_dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
     }
 }

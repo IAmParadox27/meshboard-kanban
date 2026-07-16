@@ -35,5 +35,9 @@
             Guid boardId,
             BoardIssueAssignmentRequest request,
             CancellationToken cancellationToken = default);
+        
+        Task<bool> RemoveAllIssuesAsync(
+            Guid boardId,
+            CancellationToken cancellationToken = default);
     }
 }
