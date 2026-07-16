@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
     DndContext,
     DragEndEvent,
@@ -20,6 +20,7 @@ import { KanbanCard } from "./kanban-card";
 import { KanbanCardDetailsSheet } from "./kanban-card-details-sheet";
 import { KanbanColumn } from "./kanban-column";
 import {KanbanBoardModel, KanbanCardModel, KanbanColumnModel} from "./kanban-types";
+import {Spinner} from "@/components/ui/spinner";
 
 type KanbanBoardProps = KanbanBoardModel & {
     curatedBoards: CuratedBoardActionModel[];
@@ -27,6 +28,7 @@ type KanbanBoardProps = KanbanBoardModel & {
     isSavingBoardAssignment: boolean;
     onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
     onRemoveFromCurrentBoard: (card: KanbanCardModel) => void;
+    isRefreshing: boolean;
 };
 
 type CuratedBoardActionModel = {
@@ -44,6 +46,7 @@ export function KanbanBoard(
         isSavingBoardAssignment,
         onAddToBoard,
         onRemoveFromCurrentBoard,
+        isRefreshing,
     }: KanbanBoardProps,
 ) {
     const [m_columns, setColumns] = useState<KanbanColumnModel[]>(columns);
@@ -228,6 +231,13 @@ export function KanbanBoard(
                             </div>
 
                             <div className="flex items-center gap-2">
+                                {isRefreshing ? (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Spinner className="size-4" />
+                                        Refreshing…
+                                    </div>
+                                ) : null}
+
                                 <Button variant="outline">
                                     Filter
                                 </Button>
@@ -243,6 +253,9 @@ export function KanbanBoard(
                                     key={column.id}
                                     column={column}
                                     onCardClick={(card) => setSelectedCardId(card.id)}
+                                    curatedBoards={curatedBoards}
+                                    isSavingBoardAssignment={isSavingBoardAssignment}
+                                    onAddToBoard={onAddToBoard}
                                 />
                             ))}
                         </div>
@@ -253,7 +266,10 @@ export function KanbanBoard(
                     {m_activeCard ? (
                         <KanbanCard
                             card={m_activeCard}
-                            dragOverlay
+                            onClick={(selectedCard) => setSelectedCardId(selectedCard.id)}
+                            curatedBoards={curatedBoards}
+                            isSavingBoardAssignment={isSavingBoardAssignment}
+                            onAddToBoard={onAddToBoard}
                         />
                     ) : null}
                 </DragOverlay>

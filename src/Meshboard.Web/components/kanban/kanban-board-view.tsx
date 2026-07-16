@@ -24,7 +24,9 @@ type KanbanBoardViewState = {
     board: KanbanBoardModel | null;
     boardDefinition: BoardDefinitionModel | null;
     curatedBoards: BoardDefinitionModel[];
+    boardRevision: number;
     isLoading: boolean;
+    isRefreshing: boolean;
     isSavingBoardAssignment: boolean;
     error: string | null;
 };
@@ -39,16 +41,40 @@ export function KanbanBoardView(
         board: null,
         boardDefinition: null,
         curatedBoards: [],
+        boardRevision: 0,
         isLoading: true,
+        isRefreshing: false,
         isSavingBoardAssignment: false,
         error: null,
     });
 
-    async function LoadBoard()
+    function RemoveCardFromVisibleBoard(cardId: string)
+    {
+        setState((current) => {
+            if (!current.board)
+            {
+                return current;
+            }
+
+            return {
+                ...current,
+                board: {
+                    ...current.board,
+                    columns: current.board.columns.map((column) => ({
+                        ...column,
+                        cards: column.cards.filter((x) => x.id !== cardId),
+                    })),
+                },
+            };
+        });
+    }
+
+    async function LoadBoard(showLoading = true)
     {
         setState((current) => ({
             ...current,
-            isLoading: true,
+            isLoading: showLoading && current.board === null,
+            isRefreshing: !showLoading && current.board !== null,
             error: null,
         }));
 
@@ -70,36 +96,49 @@ export function KanbanBoardView(
                 sourceNameById,
             );
 
-            setState({
+            setState((current) => ({
+                ...current,
                 board,
                 boardDefinition: boardData.board,
                 curatedBoards: boardsPage.boards.filter((x) => x.enabled && x.mode === BoardModes.Curated),
+                boardRevision: current.boardRevision + 1,
                 isLoading: false,
+                isRefreshing: false,
                 isSavingBoardAssignment: false,
                 error: null,
-            });
-        }catch (error)
+            }));
+        }
+        catch (error)
         {
-            setState({
-                board: null,
-                boardDefinition: null,
-                curatedBoards: [],
+            setState((current) => ({
+                ...current,
+                board: showLoading ? null : current.board,
+                boardDefinition: showLoading ? null : current.boardDefinition,
+                curatedBoards: showLoading ? [] : current.curatedBoards,
                 isLoading: false,
+                isRefreshing: false,
                 isSavingBoardAssignment: false,
                 error: error instanceof Error
                     ? error.message
                     : "Failed to load board.",
-            });
+            }));
         }
     }
 
     async function AddToBoard(targetBoardId: string, card: KanbanCardModel)
     {
+        const currentBoardMode = m_state.boardDefinition?.mode;
+
         setState((current) => ({
             ...current,
             isSavingBoardAssignment: true,
             error: null,
         }));
+
+        if (currentBoardMode === BoardModes.Unassigned)
+        {
+            RemoveCardFromVisibleBoard(card.id);
+        }
 
         try
         {
@@ -108,10 +147,12 @@ export function KanbanBoardView(
                 externalId: card.externalId,
             });
 
-            await LoadBoard();
+            await LoadBoard(false);
         }
         catch (error)
         {
+            await LoadBoard(false);
+
             setState((current) => ({
                 ...current,
                 isSavingBoardAssignment: false,
@@ -142,7 +183,7 @@ export function KanbanBoardView(
                 externalId: card.externalId,
             });
 
-            await LoadBoard();
+            await LoadBoard(false);
         }
         catch (error)
         {
@@ -202,6 +243,7 @@ export function KanbanBoardView(
 
     return (
         <KanbanBoard
+            key={`${boardId}:${m_state.boardRevision}`}
             {...m_state.board}
             curatedBoards={m_state.curatedBoards
                 .filter((x) => x.id !== m_state.boardDefinition?.id)
@@ -211,6 +253,7 @@ export function KanbanBoardView(
                 }))}
             canRemoveFromCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
             isSavingBoardAssignment={m_state.isSavingBoardAssignment}
+            isRefreshing={m_state.isRefreshing}
             onAddToBoard={(targetBoardId, card) => void AddToBoard(targetBoardId, card)}
             onRemoveFromCurrentBoard={(card) => void RemoveFromCurrentBoard(card)}
         />

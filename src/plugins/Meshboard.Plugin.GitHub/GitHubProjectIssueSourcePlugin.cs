@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Meshboard.Core.Issues;
 using Meshboard.Core.Sources;
 using Meshboard.Plugin.Sources;
@@ -99,15 +100,24 @@ namespace Meshboard.Plugin.GitHub
                 client.DefaultRequestHeaders.Authorization = null;
             }
             
+            string fieldsRequestPath =
+                $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/fields?per_page=5000";
+
+            List<GitHubFieldResponse>? fields = await client.GetFromJsonAsync<List<GitHubFieldResponse>>(fieldsRequestPath, cancellationToken);
+            long? statusFieldId = fields?.FirstOrDefault(x => x.Name == config.StatusFieldName)?.Id;
+            
             string requestPath =
-                $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/items?per_page=5000&fields[]=216566350&fields[]=216566302";
+                $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/items?per_page=5000";
+
+            if (statusFieldId != null)
+            {
+                requestPath += $"&fields[]={statusFieldId}";
+            }
 
             List<GitHubProjectResponse>? issues = null;
 
             try
             {
-                string rawJson = await client.GetStringAsync(requestPath, cancellationToken);
-                
                 issues = await client.GetFromJsonAsync<List<GitHubProjectResponse>>(
                     requestPath,
                     cancellationToken);
@@ -134,7 +144,7 @@ namespace Meshboard.Plugin.GitHub
             GitHubFieldSingleSelectResponse? statusField = project.Fields?
                 .Where(f => f.DataType == "single_select")
                 .Where(x => x.Name == config.StatusFieldName)
-                .Select(f => f.Value?.AsObject().GetValue<GitHubFieldSingleSelectResponse>())
+                .Select(f => f.Value?.AsObject().Deserialize<GitHubFieldSingleSelectResponse>())
                 .FirstOrDefault();
             
             string sourceColumn = statusField?.Name?.Raw ?? "Unknown";

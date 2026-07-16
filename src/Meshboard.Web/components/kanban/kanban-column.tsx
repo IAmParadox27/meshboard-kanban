@@ -10,13 +10,24 @@ import { KanbanCardModel, KanbanColumnModel } from "./kanban-types";
 
 type KanbanColumnProps = {
     column: KanbanColumnModel;
-    onCardClick?: (card: KanbanCardModel) => void;
+    onCardClick: (card: KanbanCardModel) => void;
+    curatedBoards: CuratedBoardActionModel[];
+    isSavingBoardAssignment: boolean;
+    onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
+};
+
+type CuratedBoardActionModel = {
+    id: string;
+    name: string;
 };
 
 export function KanbanColumn(
     {
         column,
         onCardClick,
+        curatedBoards,
+        isSavingBoardAssignment,
+        onAddToBoard,
     }: KanbanColumnProps,
 ) {
     const {setNodeRef} = useDroppable({
@@ -55,6 +66,9 @@ export function KanbanColumn(
                                     key={card.id}
                                     card={card}
                                     onClick={onCardClick}
+                                    curatedBoards={curatedBoards}
+                                    isSavingBoardAssignment={isSavingBoardAssignment}
+                                    onAddToBoard={onAddToBoard}
                                 />
                             ))}
                         </SortableContext>

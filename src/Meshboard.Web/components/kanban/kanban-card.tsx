@@ -8,11 +8,28 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { KanbanCardModel } from "./kanban-types";
+import { MoreVerticalIcon } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type KanbanCardProps = {
     card: KanbanCardModel;
     onClick?: (card: KanbanCardModel) => void;
     dragOverlay?: boolean;
+    curatedBoards?: CuratedBoardActionModel[];
+    isSavingBoardAssignment?: boolean;
+    onAddToBoard?: (boardId: string, card: KanbanCardModel) => void;
+};
+
+type CuratedBoardActionModel = {
+    id: string;
+    name: string;
 };
 
 const sourceClassNames: Record<KanbanCardModel["source"], string> = {
@@ -31,8 +48,14 @@ const statusVariantMap: Record<KanbanCardModel["status"], "default" | "secondary
 function KanbanCardContent(
     {
         card,
+        curatedBoards = [],
+        isSavingBoardAssignment = false,
+        onAddToBoard,
     }: {
         card: KanbanCardModel;
+        curatedBoards?: CuratedBoardActionModel[];
+        isSavingBoardAssignment?: boolean;
+        onAddToBoard?: (boardId: string, card: KanbanCardModel) => void;
     },
 )
 {
@@ -40,13 +63,50 @@ function KanbanCardContent(
         <Card className="transition-colors hover:bg-accent/40">
             <CardHeader className="space-y-3 pb-3">
                 <div className="flex items-start justify-between gap-3">
-                    <Badge className={sourceClassNames[card.source]}>
-                        {card.sourceLabel}
-                    </Badge>
+                    <div className="flex flex-wrap gap-2">
+                        <Badge className={sourceClassNames[card.source]}>
+                            {card.sourceLabel}
+                        </Badge>
 
-                    <Badge variant={statusVariantMap[card.status]}>
-                        {card.status}
-                    </Badge>
+                        <Badge variant={statusVariantMap[card.status]}>
+                            {card.status}
+                        </Badge>
+                    </div>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0"
+                                disabled={isSavingBoardAssignment || curatedBoards.length === 0}
+                                onClick={(event) => event.stopPropagation()}
+                            >
+                                <MoreVerticalIcon className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end" className="w-56">
+                            {curatedBoards.length > 0 ? (
+                                curatedBoards.map((board) => (
+                                    <DropdownMenuItem
+                                        key={board.id}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onAddToBoard?.(board.id, card);
+                                        }}
+                                    >
+                                        Add to {board.name}
+                                    </DropdownMenuItem>
+                                ))
+                            ) : (
+                                <DropdownMenuItem disabled>
+                                    No curated boards available
+                                </DropdownMenuItem>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 <CardTitle className="text-base leading-snug">
@@ -107,6 +167,9 @@ export function KanbanCard(
         card,
         onClick,
         dragOverlay = false,
+        curatedBoards = [],
+        isSavingBoardAssignment = false,
+        onAddToBoard,
     }: KanbanCardProps,
 ) {
     const {
@@ -136,7 +199,12 @@ export function KanbanCard(
     if (dragOverlay) {
         return (
             <div className="w-[280px] rotate-10 shadow-2xl">
-                <KanbanCardContent card={card}/>
+                <KanbanCardContent
+                    card={card}
+                    curatedBoards={curatedBoards}
+                    isSavingBoardAssignment={isSavingBoardAssignment}
+                    onAddToBoard={onAddToBoard}
+                />
             </div>
         );
     }
@@ -147,17 +215,28 @@ export function KanbanCard(
             style={style}
             className={isDragging ? "opacity-30" : ""}
         >
-            <button
-                type="button"
+            <div
                 onClick={() => onClick?.(card)}
-                className="block w-full text-left"
+                onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ")
+                    {
+                        event.preventDefault();
+                        onClick?.(card);
+                    }
+                }}
+                className="block w-full cursor-pointer text-left"
                 {...attributes}
                 {...listeners}
             >
                 <div className={isDragging ? "rotate-2 scale-[1.02]" : ""}>
-                    <KanbanCardContent card={card}/>
+                    <KanbanCardContent
+                        card={card}
+                        curatedBoards={curatedBoards}
+                        isSavingBoardAssignment={isSavingBoardAssignment}
+                        onAddToBoard={onAddToBoard}
+                    />
                 </div>
-            </button>
+            </div>
         </div>
     );
 }
