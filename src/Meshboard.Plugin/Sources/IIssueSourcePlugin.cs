@@ -11,6 +11,8 @@ namespace Meshboard.Plugin.Sources
 
         SourceProviderDefinition GetDefinition();
 
+        SourceCapabilitiesModel GetCapabilities(SourceDefinitionModel source);
+
         Task<IReadOnlyList<ExternalIssue>> GetIssuesAsync(
             SourceDefinitionModel source,
             CancellationToken cancellationToken = default);

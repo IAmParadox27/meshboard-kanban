@@ -7,6 +7,8 @@
         public required string DisplayName { get; set; }
         
         public required IReadOnlyList<SourceConfigurationField> ConfigurationFields { get; set; }
+        
+        public SourceCapabilitiesModel Capabilities { get; set; } = new SourceCapabilitiesModel();
     }
 
     public class SourceConfigurationField

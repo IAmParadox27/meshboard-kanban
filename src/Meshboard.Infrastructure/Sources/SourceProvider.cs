@@ -33,10 +33,25 @@ namespace Meshboard.Infrastructure.Sources
         public IReadOnlyList<SourceProviderDefinition> GetProviders()
         {
             return m_plugins
-                .Select(x => x.GetDefinition())
+                .Select(x =>
+                {
+                    SourceProviderDefinition definition = x.GetDefinition();
+                    definition.Capabilities = x.GetCapabilities(new SourceDefinitionModel
+                    {
+                        Id = Guid.Empty,
+                        Name = x.DisplayName,
+                        ProviderKey = x.SourceKey,
+                        Enabled = true,
+                        Config = new Dictionary<string, string>(),
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow,
+                    });
+                    return definition;
+                })
                 .OrderBy(x => x.DisplayName)
                 .ToArray();
         }
+        
         public async Task<IReadOnlyList<SourceDefinitionModel>> GetAllAsync(
             CancellationToken cancellationToken = default)
         {
@@ -122,19 +137,31 @@ namespace Meshboard.Infrastructure.Sources
             return true;
         }
 
-        private static SourceDefinitionModel Map(SourceDefinition definition)
+        private SourceDefinitionModel Map(SourceDefinition definition)
         {
             Dictionary<string, string>? config = JsonSerializer.Deserialize<Dictionary<string, string>>(definition.ConfigJson);
+            Dictionary<string, string> configValues = config ?? new Dictionary<string, string>();
 
-            return new SourceDefinitionModel
+            SourceDefinitionModel model = new SourceDefinitionModel
             {
                 Id = definition.Id,
-                Name = definition.Name,ProviderKey = definition.ProviderKey,
+                Name = definition.Name,
+                ProviderKey = definition.ProviderKey,
                 Enabled = definition.Enabled,
-                Config = config ?? new Dictionary<string, string>(),
+                Config = configValues,
                 CreatedAt = definition.CreatedAt,
                 UpdatedAt = definition.UpdatedAt,
             };
+
+            IIssueSourcePlugin? plugin = m_plugins.FirstOrDefault(x =>
+                string.Equals(x.SourceKey, definition.ProviderKey, StringComparison.OrdinalIgnoreCase));
+
+            if (plugin != null)
+            {
+                model.Capabilities = plugin.GetCapabilities(model);
+            }
+
+            return model;
         }
     }
 }

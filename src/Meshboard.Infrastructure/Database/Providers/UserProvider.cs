@@ -13,6 +13,17 @@ namespace Meshboard.Infrastructure.Database.Providers
             m_dbContext = dbContext;
         }
 
+        public async Task<User?> GetByIdAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+        {
+            return await m_dbContext
+                .Set<User>()
+                .Include(x => x.ExternalLogins)
+                .Include(x => x.SourceMappings)
+                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        }
+
         public async Task<User?> GetByUsernameAsync(
             string username,
             CancellationToken cancellationToken = default)
@@ -61,13 +72,13 @@ namespace Meshboard.Infrastructure.Database.Providers
         public async Task<User> CreateAsync(User user, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(user);
-            
+
             m_dbContext
                 .Set<User>()
                 .Add(user);
-            
+
             await m_dbContext.SaveChangesAsync(cancellationToken);
-            
+
             return user;
         }
     }

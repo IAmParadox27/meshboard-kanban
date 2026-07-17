@@ -9,7 +9,7 @@ namespace Meshboard.Infrastructure.Database
             : base(options)
         {
         }
-        
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -20,7 +20,19 @@ namespace Meshboard.Infrastructure.Database
                 .WithMany(x => x.ExternalLogins)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
+            modelBuilder.Entity<UserSourceMapping>()
+                .HasOne(x => x.User)
+                .WithMany(x => x.SourceMappings)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UserSourceMapping>()
+                .HasOne(x => x.Source)
+                .WithMany()
+                .HasForeignKey(x => x.SourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<SourceDefinition>();
 
             modelBuilder.Entity<BoardDefinition>();
@@ -48,7 +60,7 @@ namespace Meshboard.Infrastructure.Database
                 .WithMany()
                 .HasForeignKey(x => x.SourceId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
+
             modelBuilder.Entity<BoardColumnDefinition>()
                 .HasOne(x => x.Board)
                 .WithMany()

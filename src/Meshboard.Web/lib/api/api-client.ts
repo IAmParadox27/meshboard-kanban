@@ -12,6 +12,7 @@ import {
     MoveBoardIssuesRequest,
     UpsertBoardDefinitionRequest,
 } from "@/lib/models/boards-models";
+import { CurrentUserModel } from "@/lib/models/users-models";
 
 export class ApiClient
 {
@@ -72,6 +73,11 @@ export class ApiClient
     public async GetSourcesPage(): Promise<SourcesPageModel>
     {
         return await this.Get<SourcesPageModel>("/api/sources");
+    }
+
+    public async GetCurrentUser(): Promise<CurrentUserModel>
+    {
+        return await this.Get<CurrentUserModel>("/api/users/me");
     }
 
     public async CreateSource(request: UpsertSourceDefinitionRequest): Promise<SourceDefinitionModel>

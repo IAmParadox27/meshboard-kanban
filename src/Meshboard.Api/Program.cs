@@ -150,6 +150,7 @@ namespace Meshboard.Api
 
             // Data providers
             builder.Services.AddScoped<IUserProvider, UserProvider>();
+            builder.Services.AddScoped<IUserSourceMappingProvider, UserSourceMappingProvider>();
             builder.Services.AddScoped<ISourceProvider, SourceProvider>();
             builder.Services.AddScoped<IExternalIssueProvider, ExternalIssueProvider>();
             builder.Services.AddScoped<IBoardProvider, BoardProvider>();

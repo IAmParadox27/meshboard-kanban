@@ -81,7 +81,19 @@ namespace Meshboard.Plugin.GitHub
                 ]
             };
         }
-
+        
+        public SourceCapabilitiesModel GetCapabilities(SourceDefinitionModel source)
+        {
+            return new SourceCapabilitiesModel
+            {
+                CanReadDetails = true,
+                CanComment = false,
+                CanMoveIssue = false,
+                CanAssignUser = false,
+                CanCreateIssue = false,
+            };
+        }
+        
         public async Task<IReadOnlyList<ExternalIssue>> GetIssuesAsync(
             SourceDefinitionModel source,
             CancellationToken cancellationToken = default)

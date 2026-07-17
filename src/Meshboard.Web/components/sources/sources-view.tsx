@@ -381,6 +381,24 @@ export function SourcesView() {
                                 <div className="text-sm text-muted-foreground">
                                     {source.providerKey}
                                 </div>
+
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                    <span className="rounded-full border px-2 py-1">
+                                        Details: {source.capabilities.canReadDetails ? "Yes" : "No"}
+                                    </span>
+                                    <span className="rounded-full border px-2 py-1">
+                                        Comment: {source.capabilities.canComment ? "Yes" : "No"}
+                                    </span>
+                                    <span className="rounded-full border px-2 py-1">
+                                        Move: {source.capabilities.canMoveIssue ? "Yes" : "No"}
+                                    </span>
+                                    <span className="rounded-full border px-2 py-1">
+                                        Assign: {source.capabilities.canAssignUser ? "Yes" : "No"}
+                                    </span>
+                                    <span className="rounded-full border px-2 py-1">
+                                        Create: {source.capabilities.canCreateIssue ? "Yes" : "No"}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-2">

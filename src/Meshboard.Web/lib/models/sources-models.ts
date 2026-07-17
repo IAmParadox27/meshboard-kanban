@@ -7,10 +7,19 @@
     helpText?: string | null;
 };
 
+export type SourceCapabilitiesModel = {
+    canReadDetails: boolean;
+    canComment: boolean;
+    canMoveIssue: boolean;
+    canAssignUser: boolean;
+    canCreateIssue: boolean;
+};
+
 export type SourceProviderDefinitionModel = {
     providerKey: string;
     displayName: string;
     configurationFields: SourceConfigurationFieldModel[];
+    capabilities: SourceCapabilitiesModel;
 };
 
 export type SourceDefinitionModel = {
@@ -19,6 +28,7 @@ export type SourceDefinitionModel = {
     providerKey: string;
     enabled: boolean;
     config: Record<string, string>;
+    capabilities: SourceCapabilitiesModel;
     createdAt: string;
     updatedAt: string;
 };

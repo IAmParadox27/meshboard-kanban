@@ -36,5 +36,8 @@ namespace Meshboard.Core.Domain
 
         [InverseProperty(nameof(UserExternalLogin.User))]
         public List<UserExternalLogin> ExternalLogins { get; set; } = [];
+
+        [InverseProperty(nameof(UserSourceMapping.User))]
+        public List<UserSourceMapping> SourceMappings { get; set; } = [];
     }
 }
