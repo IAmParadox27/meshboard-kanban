@@ -25,6 +25,32 @@ namespace Meshboard.Infrastructure.Database.Providers
                 .ToArrayAsync(cancellationToken);
         }
 
+        public async Task<IReadOnlyList<UserSourceMapping>> GetBySourceIdsAsync(
+            IReadOnlyCollection<Guid> sourceIds,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(sourceIds);
+
+            Guid[] filteredSourceIds = sourceIds
+                .Where(x => x != Guid.Empty)
+                .Distinct()
+                .ToArray();
+
+            if (filteredSourceIds.Length == 0)
+            {
+                return [];
+            }
+
+            return await m_dbContext
+                .Set<UserSourceMapping>()
+                .Include(x => x.Source)
+                .Include(x => x.User)
+                .Where(x => filteredSourceIds.Contains(x.SourceId))
+                .OrderBy(x => x.Source.Name)
+                .ThenBy(x => x.User.Username)
+                .ToArrayAsync(cancellationToken);
+        }
+
         public async Task<UserSourceMapping> UpsertAsync(
             UserSourceMapping mapping,
             CancellationToken cancellationToken = default)

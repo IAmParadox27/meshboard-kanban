@@ -134,6 +134,9 @@ namespace Meshboard.Plugin.GitHub
 
     public class GitHubUserResponse
     {
+        [JsonPropertyName("id")]
+        public long Id { get; set; }
+
         [JsonPropertyName("login")]
         public string Login { get; set; } = string.Empty;
     }

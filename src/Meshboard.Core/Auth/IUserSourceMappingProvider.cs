@@ -8,6 +8,10 @@ namespace Meshboard.Core.Auth
             Guid userId,
             CancellationToken cancellationToken = default);
 
+        Task<IReadOnlyList<UserSourceMapping>> GetBySourceIdsAsync(
+            IReadOnlyCollection<Guid> sourceIds,
+            CancellationToken cancellationToken = default);
+
         Task<UserSourceMapping> UpsertAsync(
             UserSourceMapping mapping,
             CancellationToken cancellationToken = default);

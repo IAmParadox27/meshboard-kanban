@@ -601,32 +601,41 @@ export function KanbanCardDetailsSheet(
     );
 }
 
-function ToUser(name?: string | null): KanbanUserModel | undefined
+function ToUser(actor?: ExternalIssueActorModel | null): KanbanUserModel | undefined
 {
-    if (!name)
+    const preferredName = actor?.meshboardDisplayName
+        || actor?.meshboardUsername
+        || actor?.username
+        || actor?.externalDisplayName
+        || actor?.externalUsername
+        || actor?.name;
+
+    if (!preferredName)
     {
         return undefined;
     }
 
     return {
-        name,
-        initials: ToInitials(name),
+        name: preferredName,
+        initials: ToInitials(preferredName),
+        username: actor?.meshboardUsername
+            || actor?.username
+            || actor?.externalUsername
+            || undefined,
     };
 }
 
 function ToActorUser(actor?: ExternalIssueActorModel | null): KanbanUserModel
 {
-    const name = actor?.name || actor?.username || "Unknown";
-
-    return {
-        name,
-        initials: ToInitials(name),
-        username: actor?.username ?? undefined,
+    return ToUser(actor) ?? {
+        name: "Unknown",
+        initials: "?",
     };
 }
 
 function ToInitials(name: string): string
 {
+    console.log("ToInitials arg", name, typeof name, JSON.stringify(name));
     const initials = name
         .split(/[\s_-]+/)
         .filter((x) => x.length > 0)

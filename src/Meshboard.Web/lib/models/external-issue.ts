@@ -1,4 +1,15 @@
-﻿export type ExternalIssueModel = {
+﻿export type ExternalIssueActorModel = {
+    name: string;
+    username?: string | null;
+    externalUserId?: string | null;
+    externalUsername?: string | null;
+    externalDisplayName?: string | null;
+    meshboardUserId?: string | null;
+    meshboardUsername?: string | null;
+    meshboardDisplayName?: string | null;
+};
+
+export type ExternalIssueModel = {
     externalId: string;
     issueNumber: string;
     sourceKey: string;
@@ -6,18 +17,13 @@
     description?: string | null;
     status: string;
     url?: string | null;
-    assignee?: string | null;
-    reporter?: string | null;
+    assignee?: ExternalIssueActorModel | null;
+    reporter?: ExternalIssueActorModel | null;
     sourceColumn?: string | null;
     boardColumnId?: string | null;
     createdAt?: string | null;
     updatedAt?: string | null;
     labels: string[];
-};
-
-export type ExternalIssueActorModel = {
-    name: string;
-    username?: string | null;
 };
 
 export type ExternalIssueCommentModel = {

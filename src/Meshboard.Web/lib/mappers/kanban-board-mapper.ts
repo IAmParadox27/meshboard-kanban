@@ -7,16 +7,26 @@
 import {
     BoardColumnDefinitionModel,
 } from "@/lib/models/boards-models";
-import { ExternalIssueModel } from "@/lib/models/external-issue";
+import {
+    ExternalIssueActorModel,
+    ExternalIssueModel,
+} from "@/lib/models/external-issue";
 
-function ToUser(name?: string | null): KanbanUserModel | undefined
+function ToUser(actor?: ExternalIssueActorModel | null): KanbanUserModel | undefined
 {
-    if (!name)
+    const preferredName = actor?.meshboardUsername
+        || actor?.meshboardDisplayName
+        || actor?.username
+        || actor?.externalUsername
+        || actor?.externalDisplayName
+        || actor?.name;
+
+    if (!preferredName)
     {
         return undefined;
     }
 
-    const initials = name
+    const initials = preferredName
         .split(/[\s_-]+/)
         .filter((x) => x.length > 0)
         .slice(0, 2)
@@ -24,8 +34,12 @@ function ToUser(name?: string | null): KanbanUserModel | undefined
         .join("");
 
     return {
-        name,
+        name: preferredName,
         initials: initials || "?",
+        username: actor?.meshboardUsername
+            || actor?.username
+            || actor?.externalUsername
+            || undefined,
     };
 }
 

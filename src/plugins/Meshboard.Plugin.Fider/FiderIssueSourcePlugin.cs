@@ -171,7 +171,7 @@ namespace Meshboard.Plugin.Fider
                 SourceColumn = sourceColumn,
                 BoardColumnId = GetMappedBoardColumn(config.ColumnMappings, sourceColumn),
                 Url = BuildPostUrl(config.BaseUrl, issue.Number),
-                Reporter = issue.User?.Name,
+                Reporter = MapActor(issue.User),
                 CreatedAt = issue.CreatedAt,
                 UpdatedAt = updatedAt,
                 Labels = issue.Tags
@@ -237,11 +237,11 @@ namespace Meshboard.Plugin.Fider
                 {
                     Id = $"{issue.ExternalId}:created",
                     Type = "created",
-                    Description = string.IsNullOrWhiteSpace(issue.Reporter)
+                    Description = string.IsNullOrWhiteSpace(issue.Reporter?.Name)
                         ? "Post created"
-                        : $"{issue.Reporter} created this post",
+                        : $"{issue.Reporter.Name} created this post",
                     CreatedAt = issue.CreatedAt,
-                    Actor = CreateActor(issue.Reporter),
+                    Actor = issue.Reporter,
                 });
             }
 
@@ -287,11 +287,11 @@ namespace Meshboard.Plugin.Fider
                 {
                     Id = $"{issue.ExternalId}:created",
                     Type = "created",
-                    Description = string.IsNullOrWhiteSpace(issue.Reporter)
+                    Description = string.IsNullOrWhiteSpace(issue.Reporter?.Name)
                         ? "Post created"
-                        : $"{issue.Reporter} created this post",
+                        : $"{issue.Reporter.Name} created this post",
                     CreatedAt = issue.CreatedAt,
-                    Actor = CreateActor(issue.Reporter),
+                    Actor = issue.Reporter,
                 });
             }
 
@@ -310,20 +310,6 @@ namespace Meshboard.Plugin.Fider
             return activity;
         }
 
-        private static ExternalIssueActor? CreateActor(string? name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return null;
-            }
-
-            return new ExternalIssueActor
-            {
-                Name = name,
-                Username = null,
-            };
-        }
-
         private static ExternalIssueActor? MapActor(FiderUserResponse? user)
         {
             if (user == null || string.IsNullOrWhiteSpace(user.Name))
@@ -335,6 +321,9 @@ namespace Meshboard.Plugin.Fider
             {
                 Name = user.Name,
                 Username = null,
+                ExternalUserId = user.Id.ToString(),
+                ExternalUsername = null,
+                ExternalDisplayName = user.Name,
             };
         }
 

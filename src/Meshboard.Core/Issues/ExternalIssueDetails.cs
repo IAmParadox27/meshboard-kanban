@@ -42,5 +42,17 @@
         public required string Name { get; set; }
 
         public string? Username { get; set; }
+
+        public string? ExternalUserId { get; set; }
+
+        public string? ExternalUsername { get; set; }
+
+        public string? ExternalDisplayName { get; set; }
+
+        public Guid? MeshboardUserId { get; set; }
+
+        public string? MeshboardUsername { get; set; }
+
+        public string? MeshboardDisplayName { get; set; }
     }
 }

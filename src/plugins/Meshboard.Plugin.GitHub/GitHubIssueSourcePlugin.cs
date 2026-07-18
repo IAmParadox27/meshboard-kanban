@@ -184,8 +184,8 @@ namespace Meshboard.Plugin.GitHub
                 SourceColumn = sourceColumn,
                 BoardColumnId = GetMappedBoardColumn(config.ColumnMappings, sourceColumn),
                 Url = issue.HtmlUrl ?? $"https://github.com/{config.Owner}/{config.Repository}/issues/{issue.Number}",
-                Assignee = issue.Assignee?.Login,
-                Reporter = issue.User?.Login,
+                Assignee = MapActor(issue.Assignee),
+                Reporter = MapActor(issue.User),
                 CreatedAt = issue.CreatedAt,
                 UpdatedAt = issue.UpdatedAt,
                 Labels = issue.Labels
@@ -218,11 +218,11 @@ namespace Meshboard.Plugin.GitHub
                 {
                     Id = $"{issue.ExternalId}:created",
                     Type = "created",
-                    Description = string.IsNullOrWhiteSpace(issue.Reporter)
+                    Description = string.IsNullOrWhiteSpace(issue.Reporter?.Name)
                         ? "Issue created"
-                        : $"{issue.Reporter} opened this issue",
+                        : $"{issue.Reporter.Name} opened this issue",
                     CreatedAt = issue.CreatedAt,
-                    Actor = CreateActor(issue.Reporter),
+                    Actor = issue.Reporter,
                 });
             }
 
@@ -280,11 +280,11 @@ namespace Meshboard.Plugin.GitHub
                 {
                     Id = $"{issue.ExternalId}:created",
                     Type = "created",
-                    Description = string.IsNullOrWhiteSpace(issue.Reporter)
+                    Description = string.IsNullOrWhiteSpace(issue.Reporter?.Name)
                         ? "Issue created"
-                        : $"{issue.Reporter} opened this issue",
+                        : $"{issue.Reporter.Name} opened this issue",
                     CreatedAt = issue.CreatedAt,
-                    Actor = CreateActor(issue.Reporter),
+                    Actor = issue.Reporter,
                 });
             }
 
@@ -316,20 +316,6 @@ namespace Meshboard.Plugin.GitHub
             };
         }
 
-        private static ExternalIssueActor? CreateActor(string? name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return null;
-            }
-
-            return new ExternalIssueActor
-            {
-                Name = name,
-                Username = name,
-            };
-        }
-
         private static ExternalIssueActor? MapActor(GitHubUserResponse? user)
         {
             if (user == null || string.IsNullOrWhiteSpace(user.Login))
@@ -341,6 +327,9 @@ namespace Meshboard.Plugin.GitHub
             {
                 Name = user.Login,
                 Username = user.Login,
+                ExternalUserId = user.Id.ToString(),
+                ExternalUsername = user.Login,
+                ExternalDisplayName = user.Login,
             };
         }
 
