@@ -39,6 +39,14 @@ namespace Meshboard.Api.Controllers
 
             return Ok();
         }
+
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return NoContent();
+        }
         
         [HttpGet("login/oidc")]
         [AllowAnonymous]

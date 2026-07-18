@@ -13,6 +13,18 @@ namespace Meshboard.Infrastructure.Database.Providers
             m_dbContext = dbContext;
         }
 
+        public async Task<IReadOnlyList<User>> GetAllAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await m_dbContext
+                .Set<User>()
+                .Include(x => x.ExternalLogins)
+                .Include(x => x.SourceMappings)
+                .OrderBy(x => x.DisplayName)
+                .ThenBy(x => x.Username)
+                .ToArrayAsync(cancellationToken);
+        }
+
         public async Task<User?> GetByIdAsync(
             Guid id,
             CancellationToken cancellationToken = default)

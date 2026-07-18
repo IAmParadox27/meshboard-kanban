@@ -12,7 +12,15 @@ import {
     MoveBoardIssuesRequest,
     UpsertBoardDefinitionRequest,
 } from "@/lib/models/boards-models";
-import { CurrentUserModel } from "@/lib/models/users-models";
+import {
+    CurrentUserModel,
+    UpdateCurrentUserRequest,
+    UpdateUserRequest,
+    UpsertUserSourceMappingRequest,
+    UserSourceMappingModel,
+    UsersPageModel,
+    UserListItemModel,
+} from "@/lib/models/users-models";
 
 export class ApiClient
 {
@@ -80,6 +88,42 @@ export class ApiClient
         return await this.Get<CurrentUserModel>("/api/users/me");
     }
 
+    public async UpdateCurrentUser(request: UpdateCurrentUserRequest): Promise<CurrentUserModel>
+    {
+        return await this.Send<CurrentUserModel>("/api/users/me", "PUT", request);
+    }
+
+    public async UpsertCurrentUserSourceMapping(
+        sourceId: string,
+        request: UpsertUserSourceMappingRequest,
+    ): Promise<UserSourceMappingModel>
+    {
+        return await this.Send<UserSourceMappingModel>(`/api/users/me/source-mappings/${sourceId}`, "PUT", request);
+    }
+
+    public async DeleteCurrentUserSourceMapping(sourceId: string): Promise<void>
+    {
+        await this.Send<void>(`/api/users/me/source-mappings/${sourceId}`, "DELETE");
+    }
+
+    public async GetUsersPage(): Promise<UsersPageModel>
+    {
+        return await this.Get<UsersPageModel>("/api/users");
+    }
+
+    public async UpdateUser(
+        id: string,
+        request: UpdateUserRequest,
+    ): Promise<UserListItemModel>
+    {
+        return await this.Send<UserListItemModel>(`/api/users/${id}`, "PUT", request);
+    }
+
+    public async SignOut(): Promise<void>
+    {
+        await this.Send<void>("/api/auth/logout", "POST");
+    }
+
     public async CreateSource(request: UpsertSourceDefinitionRequest): Promise<SourceDefinitionModel>
     {
         return await this.Send<SourceDefinitionModel>("/api/sources", "POST", request);
@@ -128,7 +172,7 @@ export class ApiClient
 
     private async Send<T>(path: string, method: string, body?: unknown): Promise<T>
     {
-        const response = await fetch(`${path}`, {
+        const response = await fetch(path, {
             method,
             credentials: "include",
             headers: {
@@ -139,7 +183,7 @@ export class ApiClient
 
         if (!response.ok)
         {
-            throw new Error(await response.text());
+            throw new Error(await this.GetErrorMessage(response, "Request failed."));
         }
 
         if (response.status === 204)
@@ -158,11 +202,21 @@ export class ApiClient
 
             if (contentType?.includes("application/json"))
             {
-                const body = await response.json() as { message?: string };
+                const body = await response.json() as { message?: string; detail?: string; title?: string };
 
                 if (body.message)
                 {
                     return body.message;
+                }
+
+                if (body.detail)
+                {
+                    return body.detail;
+                }
+
+                if (body.title)
+                {
+                    return body.title;
                 }
             }
 

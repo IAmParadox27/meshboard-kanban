@@ -4,6 +4,9 @@ namespace Meshboard.Core.Auth
 {
     public interface IUserProvider
     {
+        Task<IReadOnlyList<User>> GetAllAsync(
+            CancellationToken cancellationToken = default);
+
         Task<User?> GetByIdAsync(
             Guid id,
             CancellationToken cancellationToken = default);
