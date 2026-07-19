@@ -25,6 +25,7 @@ export type BoardDefinitionModel = {
     name: string;
     mode: BoardMode;
     enabled: boolean;
+    isPublic: boolean;
     sourceIds: string[];
     columns: BoardColumnDefinitionModel[];
     createdAt: string;
@@ -35,6 +36,7 @@ export type UpsertBoardDefinitionRequest = {
     name: string;
     mode: BoardMode;
     enabled: boolean;
+    isPublic: boolean;
     sourceIds: string[];
     columns: UpsertBoardColumnDefinitionRequest[];
 };

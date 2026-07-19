@@ -8,6 +8,8 @@
 
         public bool Enabled { get; set; } = true;
 
+        public bool IsPublic { get; set; } = false;
+
         public IReadOnlyList<Guid> SourceIds { get; set; } = [];
         
         public IReadOnlyList<UpsertBoardColumnDefinitionRequest> Columns { get; set; } = [];

@@ -28,6 +28,8 @@ namespace Meshboard.Infrastructure.Issues
             CancellationToken cancellationToken = default)
         {
             IReadOnlyList<SourceDefinitionModel> sources = await m_sourceProvider.GetAllAsync(cancellationToken);
+            IReadOnlyDictionary<Guid, string> sourceNamesById = sources
+                .ToDictionary(x => x.Id, x => x.Name);
 
             List<ExternalIssue> issues = [];
 
@@ -42,7 +44,7 @@ namespace Meshboard.Infrastructure.Issues
                 issues.AddRange(sourceIssues);
             }
 
-            return await ResolveIssuesAsync(issues, cancellationToken);
+            return await ResolveIssuesAsync(issues, sourceNamesById, cancellationToken);
         }
 
         public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
@@ -63,7 +65,14 @@ namespace Meshboard.Infrastructure.Issues
             }
 
             IReadOnlyList<ExternalIssue> sourceIssues = await plugin.GetIssuesAsync(source, cancellationToken);
-            IReadOnlyList<ExternalIssue> resolvedSourceIssues = await ResolveIssuesAsync(sourceIssues, cancellationToken);
+            IReadOnlyDictionary<Guid, string> sourceNamesById = new Dictionary<Guid, string>
+            {
+                [source.Id] = source.Name,
+            };
+            IReadOnlyList<ExternalIssue> resolvedSourceIssues = await ResolveIssuesAsync(
+                sourceIssues,
+                sourceNamesById,
+                cancellationToken);
 
             ExternalIssue? issue = resolvedSourceIssues.FirstOrDefault(
                 x => string.Equals(x.ExternalId, externalId, StringComparison.OrdinalIgnoreCase));
@@ -74,11 +83,12 @@ namespace Meshboard.Infrastructure.Issues
             }
 
             ExternalIssueDetails? details = await plugin.GetIssueDetailsAsync(source, issue, cancellationToken);
-            return await ResolveDetailsAsync(details, cancellationToken);
+            return await ResolveDetailsAsync(details, source.Id, source.Name, cancellationToken);
         }
 
         private async Task<IReadOnlyList<ExternalIssue>> ResolveIssuesAsync(
             IReadOnlyList<ExternalIssue> issues,
+            IReadOnlyDictionary<Guid, string> sourceNamesById,
             CancellationToken cancellationToken)
         {
             if (issues.Count == 0)
@@ -97,12 +107,14 @@ namespace Meshboard.Infrastructure.Issues
                     cancellationToken);
 
             return issues
-                .Select(issue => ResolveIssue(issue, lookupBySourceId))
+                .Select(issue => ResolveIssue(issue, lookupBySourceId, sourceNamesById))
                 .ToArray();
         }
 
         private async Task<ExternalIssueDetails?> ResolveDetailsAsync(
             ExternalIssueDetails? details,
+            Guid sourceId,
+            string sourceName,
             CancellationToken cancellationToken)
         {
             if (details == null)
@@ -110,24 +122,22 @@ namespace Meshboard.Infrastructure.Issues
                 return null;
             }
 
-            Guid? sourceId = TryParseSourceId(details.Issue.SourceKey);
-
-            if (sourceId == null)
-            {
-                return details;
-            }
-
             IReadOnlyDictionary<Guid, SourceActorMappingLookup> lookupBySourceId =
-                await BuildLookupBySourceIdAsync([sourceId.Value], cancellationToken);
+                await BuildLookupBySourceIdAsync([sourceId], cancellationToken);
+
+            IReadOnlyDictionary<Guid, string> sourceNamesById = new Dictionary<Guid, string>
+            {
+                [sourceId] = sourceName,
+            };
 
             return new ExternalIssueDetails
             {
-                Issue = ResolveIssue(details.Issue, lookupBySourceId),
+                Issue = ResolveIssue(details.Issue, lookupBySourceId, sourceNamesById),
                 Comments = details.Comments
-                    .Select(comment => ResolveComment(sourceId.Value, comment, lookupBySourceId))
+                    .Select(comment => ResolveComment(sourceId, comment, lookupBySourceId))
                     .ToArray(),
                 Activity = details.Activity
-                    .Select(entry => ResolveActivity(sourceId.Value, entry, lookupBySourceId))
+                    .Select(entry => ResolveActivity(sourceId, entry, lookupBySourceId))
                     .ToArray(),
             };
         }
@@ -149,7 +159,8 @@ namespace Meshboard.Infrastructure.Issues
 
         private static ExternalIssue ResolveIssue(
             ExternalIssue issue,
-            IReadOnlyDictionary<Guid, SourceActorMappingLookup> lookupBySourceId)
+            IReadOnlyDictionary<Guid, SourceActorMappingLookup> lookupBySourceId,
+            IReadOnlyDictionary<Guid, string> sourceNamesById)
         {
             Guid? sourceId = TryParseSourceId(issue.SourceKey);
 
@@ -163,6 +174,7 @@ namespace Meshboard.Infrastructure.Issues
                 ExternalId = issue.ExternalId,
                 IssueNumber = issue.IssueNumber,
                 SourceKey = issue.SourceKey,
+                SourceName = issue.SourceName ?? GetSourceName(sourceId.Value, sourceNamesById),
                 Title = issue.Title,
                 Description = issue.Description,
                 Status = issue.Status,
@@ -251,6 +263,15 @@ namespace Meshboard.Infrastructure.Issues
             }
 
             return sourceId;
+        }
+
+        private static string? GetSourceName(
+            Guid sourceId,
+            IReadOnlyDictionary<Guid, string> sourceNamesById)
+        {
+            return sourceNamesById.TryGetValue(sourceId, out string? sourceName)
+                ? sourceName
+                : null;
         }
 
         private sealed class SourceActorMappingLookup

@@ -13,6 +13,7 @@ export type ExternalIssueModel = {
     externalId: string;
     issueNumber: string;
     sourceKey: string;
+    sourceName?: string | null;
     title: string;
     description?: string | null;
     status: string;

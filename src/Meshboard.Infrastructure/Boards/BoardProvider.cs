@@ -91,6 +91,7 @@ namespace Meshboard.Infrastructure.Boards
                 Name = request.Name,
                 Mode = request.Mode,
                 Enabled = request.Enabled,
+                IsPublic = request.IsPublic,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
             };
@@ -154,6 +155,7 @@ namespace Meshboard.Infrastructure.Boards
             board.Name = request.Name;
             board.Mode = request.Mode;
             board.Enabled = request.Enabled;
+            board.IsPublic = request.IsPublic;
             board.UpdatedAt = DateTimeOffset.UtcNow;
 
             List<BoardSourceDefinition> existingSources = await m_dbContext.Set<BoardSourceDefinition>()
@@ -403,6 +405,7 @@ namespace Meshboard.Infrastructure.Boards
                 Name = board.Name,
                 Mode = board.Mode,
                 Enabled = board.Enabled,
+                IsPublic = board.IsPublic,
                 SourceIds = sourceIds,
                 Columns = columns
                     .OrderBy(x => x.SortOrder)

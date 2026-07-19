@@ -10,6 +10,8 @@
 
         public bool Enabled { get; set; }
 
+        public bool IsPublic { get; set; }
+
         public IReadOnlyList<Guid> SourceIds { get; set; } = [];
 
         public IReadOnlyList<BoardColumnDefinitionModel> Columns { get; set; } = [];

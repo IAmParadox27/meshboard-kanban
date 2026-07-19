@@ -8,6 +8,8 @@
 
         public required string SourceKey { get; set; }
 
+        public string? SourceName { get; set; }
+
         public required string Title { get; set; }
 
         public string? Description { get; set; }

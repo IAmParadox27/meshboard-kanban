@@ -67,13 +67,17 @@ export function AppHeader(
         const items = [
             {
                 href: "/boards",
-                label: "Board",
-            },
-            {
-                href: "/sources",
-                label: "Sources",
+                label: "Boards",
             },
         ];
+
+        if (m_currentUser)
+        {
+            items.push({
+                href: "/sources",
+                label: "Sources",
+            });
+        }
 
         if (m_currentUser?.isAdmin)
         {
@@ -147,12 +151,14 @@ export function AppHeader(
                         <Input placeholder="Search cards, boards, or sources..." />
                     </div>
 
-                    <Button
-                        variant="outline"
-                        className="hidden sm:inline-flex"
-                    >
-                        New card
-                    </Button>
+                    {m_currentUser ? (
+                        <Button
+                            variant="outline"
+                            className="hidden sm:inline-flex"
+                        >
+                            New card
+                        </Button>
+                    ) : null}
 
                     <ThemeToggle />
 
@@ -188,31 +194,37 @@ export function AppHeader(
                                     </div>
 
                                     <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/profile">
+                                            Profile
+                                        </Link>
+                                    </DropdownMenuItem>
+
+                                    {m_currentUser.isAdmin ? (
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/settings">
+                                                Settings
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    ) : null}
+
+                                    <DropdownMenuSeparator />
+
+                                    <DropdownMenuItem
+                                        onClick={() => void SignOut()}
+                                        disabled={m_isSigningOut}
+                                    >
+                                        {m_isSigningOut ? "Signing out..." : "Sign out"}
+                                    </DropdownMenuItem>
                                 </>
-                            ) : null}
-
-                            <DropdownMenuItem asChild>
-                                <Link href="/profile">
-                                    Profile
-                                </Link>
-                            </DropdownMenuItem>
-
-                            {m_currentUser?.isAdmin ? (
+                            ) : (
                                 <DropdownMenuItem asChild>
-                                    <Link href="/settings">
-                                        Settings
+                                    <Link href="/login">
+                                        Sign in
                                     </Link>
                                 </DropdownMenuItem>
-                            ) : null}
-
-                            <DropdownMenuSeparator />
-
-                            <DropdownMenuItem
-                                onClick={() => void SignOut()}
-                                disabled={m_isSigningOut}
-                            >
-                                {m_isSigningOut ? "Signing out..." : "Sign out"}
-                            </DropdownMenuItem>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

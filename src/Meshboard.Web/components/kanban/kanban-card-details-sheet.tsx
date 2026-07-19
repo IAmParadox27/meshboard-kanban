@@ -37,6 +37,7 @@ type CuratedBoardActionModel = {
 };
 
 type KanbanCardDetailsSheetProps = {
+    boardId: string;
     card: KanbanCardModel | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -68,6 +69,7 @@ const priorityVariantMap: Record<KanbanCardModel["priority"], "default" | "secon
 
 export function KanbanCardDetailsSheet(
     {
+        boardId,
         card,
         open,
         onOpenChange,
@@ -106,7 +108,7 @@ export function KanbanCardDetailsSheet(
 
             try
             {
-                const details = await apiClient.GetIssueDetails(card!.sourceId, card!.externalId);
+                const details = await apiClient.GetBoardIssueDetails(boardId, card!.sourceId, card!.externalId);
 
                 if (isCancelled)
                 {
@@ -146,7 +148,7 @@ export function KanbanCardDetailsSheet(
         return () => {
             isCancelled = true;
         };
-    }, [card, open, m_detailsByCardId]);
+    }, [boardId, card, open, m_detailsByCardId]);
 
     async function RetryLoadDetails()
     {
@@ -163,7 +165,7 @@ export function KanbanCardDetailsSheet(
 
         try
         {
-            const details = await apiClient.GetIssueDetails(card.sourceId, card.externalId);
+            const details = await apiClient.GetBoardIssueDetails(boardId, card.sourceId, card.externalId);
 
             setDetailsByCardId((current) => ({
                 ...current,

@@ -17,6 +17,8 @@ namespace Meshboard.Core.Domain
         public BoardMode Mode { get; set; }
 
         public bool Enabled { get; set; } = true;
+        
+        public bool IsPublic { get; set; } = false;
 
         public DateTimeOffset CreatedAt { get; set; }
 

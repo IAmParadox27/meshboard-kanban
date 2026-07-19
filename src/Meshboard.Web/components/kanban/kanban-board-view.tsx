@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { apiClient } from "@/lib/api/api-client";import { MapIssuesToBoard } from "@/lib/mappers/kanban-board-mapper";
 import { BoardDefinitionModel, BoardModes } from "@/lib/models/boards-models";
-import { SourceDefinitionModel } from "@/lib/models/sources-models";
+import { CurrentUserModel } from "@/lib/models/users-models";
 import { KanbanBoardModel, KanbanCardModel } from "./kanban-types";
 
 type KanbanBoardViewProps = {
@@ -23,6 +23,7 @@ type KanbanBoardViewProps = {
 type KanbanBoardViewState = {
     board: KanbanBoardModel | null;
     boardDefinition: BoardDefinitionModel | null;
+    currentUser: CurrentUserModel | null;
     curatedBoards: BoardDefinitionModel[];
     boardRevision: number;
     isLoading: boolean;
@@ -40,6 +41,7 @@ export function KanbanBoardView(
     const [m_state, setState] = useState<KanbanBoardViewState>({
         board: null,
         boardDefinition: null,
+        currentUser: null,
         curatedBoards: [],
         boardRevision: 0,
         isLoading: true,
@@ -153,27 +155,27 @@ export function KanbanBoardView(
 
         try
         {
-            const [boardData, boardsPage, sourcesPage] = await Promise.all([
+            const [currentUser, boardData, boardsPage] = await Promise.all([
+                apiClient.TryGetCurrentUser(),
                 apiClient.GetBoard(boardId),
                 apiClient.GetBoardsPage(),
-                apiClient.GetSourcesPage(),
             ]);
-
-            const sourceNameById = BuildSourceNameById(sourcesPage.sources);
 
             const board = MapIssuesToBoard(
                 boardData.board.name,
                 GetBoardDescription(boardData.board.mode),
                 boardData.board.columns,
                 boardData.issues,
-                sourceNameById,
             );
 
             setState((current) => ({
                 ...current,
                 board,
                 boardDefinition: boardData.board,
-                curatedBoards: boardsPage.boards.filter((x) => x.enabled && x.mode === BoardModes.Curated),
+                currentUser,
+                curatedBoards: currentUser
+                    ? boardsPage.boards.filter((x) => x.enabled && x.mode === BoardModes.Curated)
+                    : [],
                 boardRevision: current.boardRevision + 1,
                 isLoading: false,
                 isRefreshing: false,
@@ -187,6 +189,7 @@ export function KanbanBoardView(
                 ...current,
                 board: showLoading ? null : current.board,
                 boardDefinition: showLoading ? null : current.boardDefinition,
+                currentUser: showLoading ? null : current.currentUser,
                 curatedBoards: showLoading ? [] : current.curatedBoards,
                 isLoading: false,
                 isRefreshing: false,
@@ -332,25 +335,20 @@ export function KanbanBoardView(
                     id: x.id,
                     name: x.name,
                 }))}
-            canRemoveFromCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
+            canRemoveFromCurrentBoard={m_state.currentUser != null && m_state.boardDefinition.mode === BoardModes.Curated}
             isSavingBoardAssignment={m_state.isSavingBoardAssignment}
             isRefreshing={m_state.isRefreshing}
             onAddToBoard={(targetBoardId, card) => void AddToBoard(targetBoardId, card)}
             onRemoveFromCurrentBoard={(card) => void RemoveFromCurrentBoard(card)}
-            canClearCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
+            canClearCurrentBoard={m_state.currentUser != null && m_state.boardDefinition.mode === BoardModes.Curated}
             onClearCurrentBoard={() => void ClearCurrentBoard()}
-            canMoveAllFromCurrentBoard={m_state.boardDefinition.mode === BoardModes.Curated}
+            canMoveAllFromCurrentBoard={m_state.currentUser != null && m_state.boardDefinition.mode === BoardModes.Curated}
             moveTargets={moveTargets}
             moveTargetBoardId={m_moveTargetBoardId}
             onMoveTargetBoardIdChange={setMoveTargetBoardId}
             onMoveAllFromCurrentBoard={(targetBoardId) => void MoveAllFromCurrentBoard(targetBoardId)}
         />
     );
-}
-
-function BuildSourceNameById(sources: SourceDefinitionModel[]): Record<string, string>
-{
-    return Object.fromEntries(sources.map((x) => [x.id, x.name]));
 }
 
 function GetBoardDescription(mode: number): string {

@@ -34,6 +34,16 @@ export class ApiClient
         return await this.Get<BoardDetailsModel>(`/api/boards/${boardId}`);
     }
 
+    public async GetBoardIssueDetails(
+        boardId: string,
+        sourceId: string,
+        externalId: string,
+    ): Promise<ExternalIssueDetailsModel>
+    {
+        const encodedExternalId = encodeURIComponent(externalId);
+        return await this.Get<ExternalIssueDetailsModel>(`/api/boards/${boardId}/issues/${sourceId}/${encodedExternalId}`);
+    }
+
     public async CreateBoard(request: UpsertBoardDefinitionRequest): Promise<BoardDefinitionModel>
     {
         return await this.Send<BoardDefinitionModel>("/api/boards", "POST", request);
@@ -86,6 +96,28 @@ export class ApiClient
     public async GetCurrentUser(): Promise<CurrentUserModel>
     {
         return await this.Get<CurrentUserModel>("/api/users/me");
+    }
+
+    public async TryGetCurrentUser(): Promise<CurrentUserModel | null>
+    {
+        const response = await fetch("/api/users/me", {
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (response.status === 401 || response.status === 403)
+        {
+            return null;
+        }
+
+        if (!response.ok)
+        {
+            throw new Error(await this.GetErrorMessage(response, "Request failed."));
+        }
+
+        return await response.json() as CurrentUserModel;
     }
 
     public async UpdateCurrentUser(request: UpdateCurrentUserRequest): Promise<CurrentUserModel>

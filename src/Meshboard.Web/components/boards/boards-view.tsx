@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api/api-client";
@@ -14,6 +15,7 @@ import {
     UpsertBoardDefinitionRequest,
 } from "@/lib/models/boards-models";
 import { SourceDefinitionModel } from "@/lib/models/sources-models";
+import { CurrentUserModel } from "@/lib/models/users-models";
 import {
     DndContext,
     DragEndEvent,
@@ -41,6 +43,7 @@ type BoardEditorState = {
     name: string;
     mode: BoardMode;
     enabled: boolean;
+    isPublic: boolean;
     sourceIds: string[];
     columns: BoardEditorColumnState[];
 };
@@ -78,6 +81,7 @@ function CreateEmptyEditorState(): BoardEditorState
         name: "",
         mode: BoardModes.DirectFromSources,
         enabled: true,
+        isPublic: false,
         sourceIds: [],
         columns: CreateDefaultColumns(),
     };
@@ -179,6 +183,7 @@ function BoardColumnEditorRow(
 
 export function BoardsView()
 {
+    const [m_currentUser, setCurrentUser] = useState<CurrentUserModel | null>(null);
     const [m_data, setData] = useState<BoardsViewState | null>(null);
     const [m_editor, setEditor] = useState<BoardEditorState>(CreateEmptyEditorState());
     const [m_error, setError] = useState<string | null>(null);
@@ -254,14 +259,28 @@ export function BoardsView()
 
         try
         {
-            const [boardsPage, sourcesPage] = await Promise.all([
+            const [currentUser, boardsPage] = await Promise.all([
+                apiClient.TryGetCurrentUser(),
                 apiClient.GetBoardsPage(),
-                apiClient.GetSourcesPage(),
             ]);
+
+            setCurrentUser(currentUser);
+
+            if (currentUser?.isAdmin)
+            {
+                const sourcesPage = await apiClient.GetSourcesPage();
+
+                setData({
+                    boards: boardsPage.boards,
+                    sources: sourcesPage.sources,
+                });
+
+                return;
+            }
 
             setData({
                 boards: boardsPage.boards,
-                sources: sourcesPage.sources,
+                sources: [],
             });
         }
         catch (error)
@@ -279,6 +298,7 @@ export function BoardsView()
             name: board.name,
             mode: board.mode,
             enabled: board.enabled,
+            isPublic: board.isPublic,
             sourceIds: [...board.sourceIds],
             columns: [...board.columns]
                 .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -386,6 +406,7 @@ export function BoardsView()
                 name: m_editor.name,
                 mode: m_editor.mode,
                 enabled: m_editor.enabled,
+                isPublic: m_editor.isPublic,
                 sourceIds: m_editor.mode === BoardModes.Curated
                     ? []
                     : m_editor.sourceIds,
@@ -460,7 +481,7 @@ export function BoardsView()
 
             <section className="rounded-xl border bg-card p-6">
                 <h2 className="mb-4 text-lg font-semibold">
-                    Configured boards
+                    Boards
                 </h2>
 
                 <div className="space-y-3">
@@ -469,13 +490,23 @@ export function BoardsView()
                             key={board.id}
                             className="flex items-center justify-between rounded-lg border px-4 py-3"
                         >
-                            <div>
+                            <div className="space-y-2">
                                 <div className="font-medium">
                                     {board.name}
                                 </div>
 
-                                <div className="text-sm text-muted-foreground">
-                                    {GetBoardModeLabel(board.mode)}
+                                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                    <span>
+                                        {GetBoardModeLabel(board.mode)}
+                                    </span>
+
+                                    <Badge variant={board.isPublic ? "default" : "secondary"}>
+                                        {board.isPublic ? "Public" : "Private"}
+                                    </Badge>
+
+                                    <Badge variant={board.enabled ? "outline" : "destructive"}>
+                                        {board.enabled ? "Enabled" : "Disabled"}
+                                    </Badge>
                                 </div>
                             </div>
 
@@ -486,221 +517,250 @@ export function BoardsView()
                                     </Button>
                                 </Link>
 
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => StartEditing(board)}
-                                >
-                                    Edit
-                                </Button>
+                                {m_currentUser?.isAdmin ? (
+                                    <>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => StartEditing(board)}
+                                        >
+                                            Edit
+                                        </Button>
 
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={() => void DeleteBoard(board)}
-                                >
-                                    Delete
-                                </Button>
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            onClick={() => void DeleteBoard(board)}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </>
+                                ) : null}
                             </div>
                         </div>
                     ))}
                 </div>
             </section>
 
-            <section className="rounded-xl border bg-card p-6">
-                <div className="mb-4">
-                    <h2 className="text-lg font-semibold">
-                        {m_editor.boardId ? "Edit board" : "Add board"}
-                    </h2>
-                </div>
+            {!m_currentUser?.isAdmin ? (
+                <section className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+                    Admin access is required to create, edit, delete, or reconfigure boards.
+                </section>
+            ) : null}
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                            Name
-                        </label>
-
-                        <Input
-                            value={m_editor.name}
-                            onChange={(event) => setEditor({
-                                ...m_editor,
-                                name: event.target.value,
-                            })}
-                            placeholder="Next up"
-                        />
+            {m_currentUser?.isAdmin ? (
+                <section className="rounded-xl border bg-card p-6">
+                    <div className="mb-4">
+                        <h2 className="text-lg font-semibold">
+                            {m_editor.boardId ? "Edit board" : "Add board"}
+                        </h2>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                            Mode
-                        </label>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">
+                                Name
+                            </label>
 
-                        <select
-                            className="h-8 w-full rounded-md border bg-background px-3 text-sm"
-                            value={String(m_editor.mode)}
-                            onChange={(event) => setEditor({
-                                ...m_editor,
-                                mode: Number(event.target.value) as BoardMode,
-                                sourceIds: Number(event.target.value) === BoardModes.DirectFromSources
-                                    ? m_editor.sourceIds
-                                    : [],
-                            })}
-                        >
-                            <option value={BoardModes.DirectFromSources}>
-                                Direct from sources
-                            </option>
-                            <option value={BoardModes.Curated}>
-                                Curated
-                            </option>
-                            <option value={BoardModes.Unassigned}>
-                                Unassigned
-                            </option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="mt-4 flex items-center gap-2">
-                    <input
-                        id="board-enabled"
-                        type="checkbox"
-                        checked={m_editor.enabled}
-                        onChange={(event) => setEditor({
-                            ...m_editor,
-                            enabled: event.target.checked,
-                        })}
-                    />
-                    <label htmlFor="board-enabled" className="text-sm font-medium">
-                        Enabled
-                    </label>
-                </div>
-
-                <div className="mt-6 space-y-3">
-
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h3 className="text-sm font-medium">
-                            Columns
-                        </h3>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <select
-                                className="h-8 min-w-56 rounded-md border bg-background px-3 text-sm"
-                                value={m_copyColumnsBoardId}
-                                onChange={(event) => setCopyColumnsBoardId(event.target.value)}
-                                disabled={m_isSaving || copyableBoards.length === 0}
-                            >
-                                <option value="">
-                                    Copy columns from...
-                                </option>
-
-                                {copyableBoards.map((board) => (
-                                    <option key={board.id} value={board.id}>
-                                        {board.name}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                disabled={m_isSaving || m_copyColumnsBoardId.length === 0}
-                                onClick={() => CopyColumnsFromBoard(m_copyColumnsBoardId)}
-                            >
-                                Use their columns
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={AddColumn}
-                                disabled={m_isSaving}
-                            >
-                                Add column
-                            </Button>
+                            <Input
+                                value={m_editor.name}
+                                onChange={(event) => setEditor({
+                                    ...m_editor,
+                                    name: event.target.value,
+                                })}
+                                placeholder="Next up"
+                            />
                         </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <DndContext
-                            sensors={m_sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={ReorderColumns}
-                        >
-                            <SortableContext
-                                items={m_editor.columns.map((column) => column.id)}
-                                strategy={verticalListSortingStrategy}
-                            >
-                                <div className="space-y-3">
-                                    {m_editor.columns.map((column) => (
-                                        <BoardColumnEditorRow
-                                            key={column.id}
-                                            column={column}
-                                            canRemove={m_editor.columns.length > 1}
-                                            disabled={m_isSaving}
-                                            onColumnIdChange={(value) => UpdateColumn(column.id, {
-                                                columnId: value,
-                                            })}
-                                            onTitleChange={(value) => UpdateColumn(column.id, {
-                                                title: value,
-                                            })}
-                                            onRemove={() => RemoveColumn(column.id)}
-                                        />
-                                    ))}
-                                </div>
-                            </SortableContext>
-                        </DndContext>
-                    </div>
-                </div>
-
-                {m_editor.mode !== BoardModes.Curated ? (
-                    <div className="mt-6 space-y-3">
-                        <h3 className="text-sm font-medium">
-                            Sources
-                        </h3>
 
                         <div className="space-y-2">
-                            {directSources.map((source) => (
-                                <label
-                                    key={source.id}
-                                    className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={m_editor.sourceIds.includes(source.id)}
-                                        onChange={() => ToggleSource(source.id)}
-                                    />
-                                    <span className="font-medium">
-                                        {source.name}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                        ({source.providerKey})
-                                    </span>
-                                </label>
-                            ))}
+                            <label className="text-sm font-medium">
+                                Mode
+                            </label>
+
+                            <select
+                                className="h-8 w-full rounded-md border bg-background px-3 text-sm"
+                                value={String(m_editor.mode)}
+                                onChange={(event) => setEditor({
+                                    ...m_editor,
+                                    mode: Number(event.target.value) as BoardMode,
+                                    sourceIds: Number(event.target.value) === BoardModes.DirectFromSources
+                                        ? m_editor.sourceIds
+                                        : [],
+                                })}
+                            >
+                                <option value={BoardModes.DirectFromSources}>
+                                    Direct from sources
+                                </option>
+                                <option value={BoardModes.Curated}>
+                                    Curated
+                                </option>
+                                <option value={BoardModes.Unassigned}>
+                                    Unassigned
+                                </option>
+                            </select>
                         </div>
                     </div>
-                ) : null}
 
-                <div className="mt-4 flex justify-end gap-2">
-                    {m_editor.boardId ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={CancelEditing}
-                            disabled={m_isSaving}
-                        >
-                            Cancel
-                        </Button>
+                    <div className="mt-4 flex flex-wrap items-center gap-6">
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                            <input
+                                id="board-enabled"
+                                type="checkbox"
+                                checked={m_editor.enabled}
+                                onChange={(event) => setEditor({
+                                    ...m_editor,
+                                    enabled: event.target.checked,
+                                })}
+                            />
+                            Enabled
+                        </label>
+
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                            <input
+                                id="board-public"
+                                type="checkbox"
+                                checked={m_editor.isPublic}
+                                onChange={(event) => setEditor({
+                                    ...m_editor,
+                                    isPublic: event.target.checked,
+                                })}
+                            />
+                            Public board
+                        </label>
+                    </div>
+
+                    <p className="mt-2 text-sm text-muted-foreground">
+                        Public boards can be viewed without signing in. Private boards require an authenticated user.
+                    </p>
+
+                    <div className="mt-6 space-y-3">
+
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <h3 className="text-sm font-medium">
+                                Columns
+                            </h3>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                    className="h-8 min-w-56 rounded-md border bg-background px-3 text-sm"
+                                    value={m_copyColumnsBoardId}
+                                    onChange={(event) => setCopyColumnsBoardId(event.target.value)}
+                                    disabled={m_isSaving || copyableBoards.length === 0}
+                                >
+                                    <option value="">
+                                        Copy columns from...
+                                    </option>
+
+                                    {copyableBoards.map((board) => (
+                                        <option key={board.id} value={board.id}>
+                                            {board.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={m_isSaving || m_copyColumnsBoardId.length === 0}
+                                    onClick={() => CopyColumnsFromBoard(m_copyColumnsBoardId)}
+                                >
+                                    Use their columns
+                                </Button>
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={AddColumn}
+                                    disabled={m_isSaving}
+                                >
+                                    Add column
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <DndContext
+                                sensors={m_sensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={ReorderColumns}
+                            >
+                                <SortableContext
+                                    items={m_editor.columns.map((column) => column.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    <div className="space-y-3">
+                                        {m_editor.columns.map((column) => (
+                                            <BoardColumnEditorRow
+                                                key={column.id}
+                                                column={column}
+                                                canRemove={m_editor.columns.length > 1}
+                                                disabled={m_isSaving}
+                                                onColumnIdChange={(value) => UpdateColumn(column.id, {
+                                                    columnId: value,
+                                                })}
+                                                onTitleChange={(value) => UpdateColumn(column.id, {
+                                                    title: value,
+                                                })}
+                                                onRemove={() => RemoveColumn(column.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
+                        </div>
+                    </div>
+
+                    {m_editor.mode !== BoardModes.Curated ? (
+                        <div className="mt-6 space-y-3">
+                            <h3 className="text-sm font-medium">
+                                Sources
+                            </h3>
+
+                            <div className="space-y-2">
+                                {directSources.map((source) => (
+                                    <label
+                                        key={source.id}
+                                        className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={m_editor.sourceIds.includes(source.id)}
+                                            onChange={() => ToggleSource(source.id)}
+                                        />
+                                        <span className="font-medium">
+                                        {source.name}
+                                    </span>
+                                        <span className="text-muted-foreground">
+                                        ({source.providerKey})
+                                    </span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
                     ) : null}
 
-                    <Button
-                        type="button"
-                        onClick={() => void SaveBoard()}
-                        disabled={m_isSaving}
-                    >
-                        {m_editor.boardId ? "Save changes" : "Add board"}
-                    </Button>
-                </div>
-            </section>
+                    <div className="mt-4 flex justify-end gap-2">
+                        {m_editor.boardId ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={CancelEditing}
+                                disabled={m_isSaving}
+                            >
+                                Cancel
+                            </Button>
+                        ) : null}
+
+                        <Button
+                            type="button"
+                            onClick={() => void SaveBoard()}
+                            disabled={m_isSaving}
+                        >
+                            {m_editor.boardId ? "Save changes" : "Add board"}
+                        </Button>
+                    </div>
+                </section>
+            ) : null}
         </main>
     );
 }

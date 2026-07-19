@@ -122,7 +122,7 @@ function ToCard(
     sourceNameById: Record<string, string>,
 ): KanbanCardModel
 {
-    const sourceLabel = sourceNameById[issue.sourceKey] ?? issue.sourceKey;
+    const sourceLabel = issue.sourceName ?? sourceNameById[issue.sourceKey] ?? issue.sourceKey;
 
     return {
         id: `${issue.sourceKey}:${issue.externalId}`,

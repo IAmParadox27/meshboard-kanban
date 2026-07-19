@@ -552,6 +552,7 @@ export function KanbanBoard(
             </DndContext>
 
             <KanbanCardDetailsSheet
+                boardId={boardId}
                 card={m_selectedCard}
                 open={m_selectedCard != null}
                 onOpenChange={(open) => {
