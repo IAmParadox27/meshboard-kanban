@@ -24,6 +24,7 @@ type KanbanCardProps = {
     dragOverlay?: boolean;
     curatedBoards?: CuratedBoardActionModel[];
     isSavingBoardAssignment?: boolean;
+    canDrag?: boolean;
     onAddToBoard?: (boardId: string, card: KanbanCardModel) => void;
 };
 
@@ -169,6 +170,7 @@ export const KanbanCard = memo(function KanbanCard(
         dragOverlay = false,
         curatedBoards = [],
         isSavingBoardAssignment = false,
+        canDrag = true,
         onAddToBoard,
     }: KanbanCardProps,
 ) {
@@ -185,7 +187,7 @@ export const KanbanCard = memo(function KanbanCard(
             type: "card",
             cardId: card.id,
         },
-        disabled: dragOverlay,
+        disabled: dragOverlay || !canDrag,
     });
 
     const style = dragOverlay

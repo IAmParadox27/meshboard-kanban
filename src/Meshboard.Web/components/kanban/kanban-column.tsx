@@ -20,6 +20,7 @@ type KanbanColumnProps = {
     onCardClick: (card: KanbanCardModel) => void;
     curatedBoards: CuratedBoardActionModel[];
     isSavingBoardAssignment: boolean;
+    canDragCards: boolean;
     onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
 };
 
@@ -37,6 +38,7 @@ export const KanbanColumn = memo(function KanbanColumn(
         onCardClick,
         curatedBoards,
         isSavingBoardAssignment,
+        canDragCards,
         onAddToBoard,
     }: KanbanColumnProps,
 )
@@ -137,6 +139,7 @@ export const KanbanColumn = memo(function KanbanColumn(
                                     onClick={onCardClick}
                                     curatedBoards={curatedBoards}
                                     isSavingBoardAssignment={isSavingBoardAssignment}
+                                    canDrag={canDragCards}
                                     onAddToBoard={onAddToBoard}
                                 />
                             ))}

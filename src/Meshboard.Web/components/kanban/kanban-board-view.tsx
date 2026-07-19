@@ -335,6 +335,7 @@ export function KanbanBoardView(
                     id: x.id,
                     name: x.name,
                 }))}
+            canEditBoard={m_state.currentUser != null}
             canRemoveFromCurrentBoard={m_state.currentUser != null && m_state.boardDefinition.mode === BoardModes.Curated}
             isSavingBoardAssignment={m_state.isSavingBoardAssignment}
             isRefreshing={m_state.isRefreshing}

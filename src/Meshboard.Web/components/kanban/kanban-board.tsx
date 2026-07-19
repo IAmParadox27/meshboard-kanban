@@ -35,6 +35,7 @@ import { KanbanBoardModel, KanbanCardModel, KanbanColumnModel } from "./kanban-t
 type KanbanBoardProps = KanbanBoardModel & {
     boardId: string;
     curatedBoards: CuratedBoardActionModel[];
+    canEditBoard: boolean;
     canRemoveFromCurrentBoard: boolean;
     isSavingBoardAssignment: boolean;
     onAddToBoard: (boardId: string, card: KanbanCardModel) => void;
@@ -61,6 +62,7 @@ export function KanbanBoard(
         description,
         columns,
         curatedBoards,
+        canEditBoard,
         canRemoveFromCurrentBoard,
         isSavingBoardAssignment,
         onAddToBoard,
@@ -93,6 +95,8 @@ export function KanbanBoard(
             },
         }),
     );
+
+    const m_canDragCards = canEditBoard && !isSavingBoardAssignment;
 
     const m_selectedCard = useMemo(() => {
         for (const column of m_columns) {
@@ -357,11 +361,11 @@ export function KanbanBoard(
     return (
         <>
             <DndContext
-                sensors={m_sensors}
+                sensors={m_canDragCards ? m_sensors : undefined}
                 collisionDetection={pointerWithin}
-                onDragStart={HandleDragStart}
-                onDragOver={HandleDragOver}
-                onDragEnd={HandleDragEnd}
+                onDragStart={m_canDragCards ? HandleDragStart : undefined}
+                onDragOver={m_canDragCards ? HandleDragOver : undefined}
+                onDragEnd={m_canDragCards ? HandleDragEnd : undefined}
             >
                 <main className="flex h-full min-h-0 flex-col overflow-y-auto">
                     <div className="mx-auto flex h-full min-h-0 w-full max-w-[1600px] flex-col px-6 py-6">
@@ -385,6 +389,12 @@ export function KanbanBoard(
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Spinner className="size-4" />
                                         Refreshing…
+                                    </div>
+                                ) : null}
+
+                                {!canEditBoard ? (
+                                    <div className="text-sm text-muted-foreground">
+                                        Read-only public view
                                     </div>
                                 ) : null}
 
@@ -512,9 +522,11 @@ export function KanbanBoard(
                                     Filter
                                 </Button>
 
-                                <Button>
-                                    New card
-                                </Button>
+                                {canEditBoard ? (
+                                    <Button>
+                                        New card
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
 
@@ -530,6 +542,7 @@ export function KanbanBoard(
                                         onCardClick={HandleCardClick}
                                         curatedBoards={curatedBoards}
                                         isSavingBoardAssignment={isSavingBoardAssignment}
+                                        canDragCards={m_canDragCards}
                                         onAddToBoard={onAddToBoard}
                                     />
                                 ))}
@@ -539,12 +552,13 @@ export function KanbanBoard(
                 </main>
 
                 <DragOverlay>
-                    {m_activeCard ? (
+                    {m_canDragCards && m_activeCard ? (
                         <KanbanCard
                             card={m_activeCard}
                             onClick={(selectedCard) => setSelectedCardId(selectedCard.id)}
                             curatedBoards={curatedBoards}
                             isSavingBoardAssignment={isSavingBoardAssignment}
+                            canDrag={false}
                             onAddToBoard={onAddToBoard}
                         />
                     ) : null}
