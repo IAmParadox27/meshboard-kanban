@@ -6,7 +6,7 @@ using Meshboard.Plugin.Sources;
 
 namespace Meshboard.Plugin.GitHub
 {
-    public class GitHubIssueSourcePlugin : IIssueSourcePlugin
+    public class GitHubIssueSourcePlugin : IIssueSourcePlugin, IDirectIssueDetailsSourcePlugin 
     {
         private readonly IHttpClientFactory m_httpClientFactory;
 
@@ -148,7 +148,42 @@ namespace Meshboard.Plugin.GitHub
                 Activity = BuildActivity(mappedIssue, githubIssue, comments),
             };
         }
+        
+        public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
+            SourceDefinitionModel source,
+            string externalId,
+            CancellationToken cancellationToken = default)
+        {
+            GitHubSourceConfig config = GetConfig(source);
+            HttpClient client = CreateClient(config);
 
+            GitHubIssueResponse? githubIssue = await TryGetFromJsonAsync<GitHubIssueResponse>(
+                client,
+                $"repos/{Uri.EscapeDataString(config.Owner)}/{Uri.EscapeDataString(config.Repository)}/issues/{Uri.EscapeDataString(externalId)}",
+                cancellationToken);
+
+            if (githubIssue == null || githubIssue.PullRequest != null)
+            {
+                return null;
+            }
+
+            IReadOnlyList<GitHubIssueCommentResponse> comments = await TryGetPagedFromJsonAsync<GitHubIssueCommentResponse>(
+                client,
+                AppendPerPage(githubIssue.CommentsUrl),
+                cancellationToken);
+
+            ExternalIssue mappedIssue = MapIssue(source, config, githubIssue);
+
+            return new ExternalIssueDetails
+            {
+                Issue = mappedIssue,
+                Comments = comments
+                    .Select(MapComment)
+                    .ToArray(),
+                Activity = BuildActivity(mappedIssue, githubIssue, comments),
+            };
+        }
+        
         private HttpClient CreateClient(GitHubSourceConfig config)
         {
             HttpClient client = m_httpClientFactory.CreateClient("GitHub");
@@ -176,6 +211,7 @@ namespace Meshboard.Plugin.GitHub
             return new ExternalIssue
             {
                 ExternalId = issue.Id.ToString(),
+                DetailsLookupKey = issue.Number.ToString(),
                 SourceKey = source.Id.ToString(),
                 IssueNumber = issue.Number.ToString(),
                 Title = issue.Title,

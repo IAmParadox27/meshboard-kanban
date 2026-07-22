@@ -240,21 +240,18 @@ namespace Meshboard.Infrastructure.Boards
                 return null;
             }
 
-            IReadOnlyList<ExternalIssue> allIssues = await m_externalIssueProvider.GetIssuesAsync(cancellationToken);
             IReadOnlyList<ExternalIssue> issues = board.Mode switch
             {
                 BoardMode.DirectFromSources => await GetDirectBoardIssuesAsync(
                     board,
-                    allIssues,cancellationToken),
+                    cancellationToken),
 
                 BoardMode.Curated => await GetCuratedBoardIssuesAsync(
                     board,
-                    allIssues,
                     cancellationToken),
 
                 BoardMode.Unassigned => await GetUnassignedBoardIssuesAsync(
                     board,
-                    allIssues,
                     cancellationToken),
 
                 _ => [],
@@ -263,7 +260,7 @@ namespace Meshboard.Infrastructure.Boards
             return new BoardDetailsModel
             {
                 Board = board,
-                Issues = issues,
+                Issues = ToBoardIssueSummaries(issues),
             };
         }
 
@@ -331,47 +328,51 @@ namespace Meshboard.Infrastructure.Boards
 
         private async Task<IReadOnlyList<ExternalIssue>> GetDirectBoardIssuesAsync(
             BoardDefinitionModel board,
-            IReadOnlyList<ExternalIssue> allIssues,
             CancellationToken cancellationToken)
         {
-            HashSet<string> allowedSourceIds = board.SourceIds
-                .Select(x => x.ToString())
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            return allIssues
-                .Where(x => allowedSourceIds.Contains(x.SourceKey))
-                .ToArray();
+            return await m_externalIssueProvider.GetIssuesAsync(board.SourceIds, cancellationToken);
         }
 
         private async Task<IReadOnlyList<ExternalIssue>> GetCuratedBoardIssuesAsync(
             BoardDefinitionModel board,
-            IReadOnlyList<ExternalIssue> allIssues,
             CancellationToken cancellationToken)
         {
-            HashSet<string> assignedKeys = await m_dbContext
+            BoardIssueAssignment[] assignments = await m_dbContext
                 .Set<BoardIssueAssignment>()
                 .Where(x => x.BoardId == board.Id)
-                .Select(x => $"{x.SourceId:N}:{x.ExternalId}")
-                .ToHashSetAsync(cancellationToken);
+                .ToArrayAsync(cancellationToken);
 
-            return allIssues
+            if (assignments.Length == 0)
+            {
+                return [];
+            }
+
+            Guid[] sourceIds = assignments
+                .Select(x => x.SourceId)
+                .Distinct()
+                .ToArray();
+
+            HashSet<string> assignedKeys = assignments
+                .Select(x => ToAssignmentKey(x.SourceId, x.ExternalId))
+                .ToHashSet();
+
+            IReadOnlyList<ExternalIssue> issues = await m_externalIssueProvider.GetIssuesAsync(
+                sourceIds,
+                cancellationToken);
+
+            return issues
                 .Where(x => assignedKeys.Contains(ToAssignmentKey(x.SourceKey, x.ExternalId)))
                 .ToArray();
         }
         
         private async Task<IReadOnlyList<ExternalIssue>> GetUnassignedBoardIssuesAsync(
             BoardDefinitionModel board,
-            IReadOnlyList<ExternalIssue> allIssues,
             CancellationToken cancellationToken)
         {
-            HashSet<string> allowedSourceIds = board.SourceIds
-                .Select(x => x.ToString())
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            IReadOnlyList<ExternalIssue> sourceScopedIssues = await m_externalIssueProvider.GetIssuesAsync(
+                board.SourceIds,
+                cancellationToken);
 
-            IReadOnlyList<ExternalIssue> sourceScopedIssues = allIssues
-                .Where(x => allowedSourceIds.Contains(x.SourceKey))
-                .ToArray();
-            
             Guid[] curatedBoardIds = await m_dbContext
                 .Set<BoardDefinition>()
                 .Where(x => x.Enabled && x.Mode == BoardMode.Curated)
@@ -393,7 +394,46 @@ namespace Meshboard.Infrastructure.Boards
         {
             return $"{sourceKey.Replace("-", string.Empty, StringComparison.OrdinalIgnoreCase)}:{externalId}";
         }
+        
+        private static IReadOnlyList<BoardIssueSummaryModel> ToBoardIssueSummaries(
+            IReadOnlyList<ExternalIssue> issues)
+        {
+            return issues
+                .Select(issue => new BoardIssueSummaryModel
+                {
+                    ExternalId = issue.ExternalId,
+                    DetailsLookupKey = issue.DetailsLookupKey,
+                    IssueNumber = issue.IssueNumber,
+                    SourceKey = issue.SourceKey,
+                    SourceName = issue.SourceName,
+                    Title = issue.Title,
+                    DescriptionPreview = ToPreview(issue.Description),
+                    Status = issue.Status,
+                    Url = issue.Url,
+                    Assignee = issue.Assignee,
+                    SourceColumn = issue.SourceColumn,
+                    BoardColumnId = issue.BoardColumnId,
+                    UpdatedAt = issue.UpdatedAt,
+                    CreatedAt = issue.CreatedAt,
+                    Labels = issue.Labels,
+                })
+                .ToArray();
+        }
 
+        private static string? ToPreview(string? value, int maxLength = 220)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            string trimmed = value.Trim();
+
+            return trimmed.Length <= maxLength
+                ? trimmed
+                : trimmed[..maxLength] + "...";
+        }
+        
         private static BoardDefinitionModel Map(
             BoardDefinition board,
             IReadOnlyList<Guid> sourceIds,

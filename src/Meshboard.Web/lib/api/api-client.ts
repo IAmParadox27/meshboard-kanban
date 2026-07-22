@@ -37,11 +37,11 @@ export class ApiClient
     public async GetBoardIssueDetails(
         boardId: string,
         sourceId: string,
-        externalId: string,
+        detailsLookupKey: string,
     ): Promise<ExternalIssueDetailsModel>
     {
-        const encodedExternalId = encodeURIComponent(externalId);
-        return await this.Get<ExternalIssueDetailsModel>(`/api/boards/${boardId}/issues/${sourceId}/${encodedExternalId}`);
+        const encodedDetailsLookupKey = encodeURIComponent(detailsLookupKey);
+        return await this.Get<ExternalIssueDetailsModel>(`/api/boards/${boardId}/issues/${sourceId}/${encodedDetailsLookupKey}`);
     }
 
     public async CreateBoard(request: UpsertBoardDefinitionRequest): Promise<BoardDefinitionModel>

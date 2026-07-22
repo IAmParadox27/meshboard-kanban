@@ -28,28 +28,52 @@ namespace Meshboard.Infrastructure.Issues
             CancellationToken cancellationToken = default)
         {
             IReadOnlyList<SourceDefinitionModel> sources = await m_sourceProvider.GetAllAsync(cancellationToken);
+            Guid[] enabledSourceIds = sources
+                .Where(x => x.Enabled)
+                .Select(x => x.Id)
+                .ToArray();
+
+            return await GetIssuesAsync(enabledSourceIds, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ExternalIssue>> GetIssuesAsync(
+            IReadOnlyCollection<Guid> sourceIds,
+            CancellationToken cancellationToken = default)
+        {
+            if (sourceIds.Count == 0)
+            {
+                return [];
+            }
+
+            HashSet<Guid> requestedSourceIds = sourceIds.ToHashSet();
+            IReadOnlyList<SourceDefinitionModel> allSources = await m_sourceProvider.GetAllAsync(cancellationToken);
+            SourceDefinitionModel[] sources = allSources
+                .Where(x => x.Enabled && requestedSourceIds.Contains(x.Id))
+                .ToArray();
+
             IReadOnlyDictionary<Guid, string> sourceNamesById = sources
                 .ToDictionary(x => x.Id, x => x.Name);
 
-            List<ExternalIssue> issues = [];
-
-            foreach (SourceDefinitionModel source in sources.Where(x => x.Enabled))
-            {
-                if (!m_plugins.TryGetValue(source.ProviderKey, out IIssueSourcePlugin? plugin))
+            Task<IReadOnlyList<ExternalIssue>>[] fetchTasks = sources
+                .Where(x => m_plugins.ContainsKey(x.ProviderKey))
+                .Select(async source =>
                 {
-                    continue;
-                }
+                    IIssueSourcePlugin plugin = m_plugins[source.ProviderKey];
+                    return await plugin.GetIssuesAsync(source, cancellationToken);
+                })
+                .ToArray();
 
-                IReadOnlyList<ExternalIssue> sourceIssues = await plugin.GetIssuesAsync(source, cancellationToken);
-                issues.AddRange(sourceIssues);
-            }
+            IReadOnlyList<ExternalIssue>[] results = await Task.WhenAll(fetchTasks);
+            List<ExternalIssue> issues = results
+                .SelectMany(x => x)
+                .ToList();
 
             return await ResolveIssuesAsync(issues, sourceNamesById, cancellationToken);
         }
 
         public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
             Guid sourceId,
-            string externalId,
+            string detailsLookupKey,
             CancellationToken cancellationToken = default)
         {
             SourceDefinitionModel? source = await m_sourceProvider.GetByIdAsync(sourceId, cancellationToken);
@@ -64,6 +88,16 @@ namespace Meshboard.Infrastructure.Issues
                 return null;
             }
 
+            if (plugin is IDirectIssueDetailsSourcePlugin directDetailsPlugin)
+            {
+                ExternalIssueDetails? directDetails = await directDetailsPlugin.GetIssueDetailsAsync(
+                    source,
+                    detailsLookupKey,
+                    cancellationToken);
+
+                return await ResolveDetailsAsync(directDetails, source.Id, source.Name, cancellationToken);
+            }
+
             IReadOnlyList<ExternalIssue> sourceIssues = await plugin.GetIssuesAsync(source, cancellationToken);
             IReadOnlyDictionary<Guid, string> sourceNamesById = new Dictionary<Guid, string>
             {
@@ -75,7 +109,7 @@ namespace Meshboard.Infrastructure.Issues
                 cancellationToken);
 
             ExternalIssue? issue = resolvedSourceIssues.FirstOrDefault(
-                x => string.Equals(x.ExternalId, externalId, StringComparison.OrdinalIgnoreCase));
+                x => string.Equals(x.DetailsLookupKey, detailsLookupKey, StringComparison.OrdinalIgnoreCase));
 
             if (issue == null)
             {
@@ -172,6 +206,7 @@ namespace Meshboard.Infrastructure.Issues
             return new ExternalIssue
             {
                 ExternalId = issue.ExternalId,
+                DetailsLookupKey = issue.DetailsLookupKey,
                 IssueNumber = issue.IssueNumber,
                 SourceKey = issue.SourceKey,
                 SourceName = issue.SourceName ?? GetSourceName(sourceId.Value, sourceNamesById),

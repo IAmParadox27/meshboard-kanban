@@ -1,4 +1,4 @@
-﻿import { ExternalIssueModel } from "@/lib/models/external-issue";
+﻿import { BoardIssueSummaryModel } from "@/lib/models/external-issue";
 
 export const BoardModes = {
     DirectFromSources: 0,
@@ -47,7 +47,7 @@ export type BoardsPageModel = {
 
 export type BoardDetailsModel = {
     board: BoardDefinitionModel;
-    issues: ExternalIssueModel[];
+    issues: BoardIssueSummaryModel[];
 };
 
 export type BoardIssueAssignmentRequest = {

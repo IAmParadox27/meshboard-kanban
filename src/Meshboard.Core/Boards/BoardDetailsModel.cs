@@ -6,6 +6,6 @@ namespace Meshboard.Core.Boards
     {
         public required BoardDefinitionModel Board { get; set; }
 
-        public required IReadOnlyList<ExternalIssue> Issues { get; set; }
+        public required IReadOnlyList<BoardIssueSummaryModel> Issues { get; set; }
     }
 }

@@ -1,11 +1,13 @@
-﻿namespace Meshboard.Core.Issues
+﻿using Meshboard.Core.Issues;
+
+namespace Meshboard.Core.Boards
 {
-    public class ExternalIssue
+    public class BoardIssueSummaryModel
     {
         public required string ExternalId { get; set; }
-
+        
         public required string DetailsLookupKey { get; set; }
-
+        
         public required string IssueNumber { get; set; }
 
         public required string SourceKey { get; set; }
@@ -14,15 +16,13 @@
 
         public required string Title { get; set; }
 
-        public string? Description { get; set; }
+        public string? DescriptionPreview { get; set; }
 
         public string Status { get; set; } = "open";
 
         public string? Url { get; set; }
 
         public ExternalIssueActor? Assignee { get; set; }
-
-        public ExternalIssueActor? Reporter { get; set; }
 
         public string? SourceColumn { get; set; }
 

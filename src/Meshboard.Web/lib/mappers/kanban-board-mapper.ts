@@ -8,8 +8,8 @@ import {
     BoardColumnDefinitionModel,
 } from "@/lib/models/boards-models";
 import {
+    BoardIssueSummaryModel,
     ExternalIssueActorModel,
-    ExternalIssueModel,
 } from "@/lib/models/external-issue";
 
 function ToUser(actor?: ExternalIssueActorModel | null): KanbanUserModel | undefined
@@ -76,7 +76,7 @@ function ToFallbackColumnId(status: string): string
     }
 }
 
-function ToColumnId(issue: ExternalIssueModel): string
+function ToColumnId(issue: BoardIssueSummaryModel): string
 {
     if (issue.boardColumnId && issue.boardColumnId.trim().length > 0)
     {
@@ -118,7 +118,7 @@ function ToSourceKind(sourceLabel: string): string
 }
 
 function ToCard(
-    issue: ExternalIssueModel,
+    issue: BoardIssueSummaryModel,
     sourceNameById: Record<string, string>,
 ): KanbanCardModel
 {
@@ -128,9 +128,10 @@ function ToCard(
         id: `${issue.sourceKey}:${issue.externalId}`,
         sourceId: issue.sourceKey,
         externalId: issue.externalId,
+        detailsLookupKey: issue.detailsLookupKey,
         number: issue.issueNumber,
         title: issue.title,
-        description: issue.description ?? "No description provided.",
+        description: issue.descriptionPreview ?? "No description provided.",
         source: ToSourceKind(sourceLabel),
         sourceLabel,
         status: "synced",
@@ -142,7 +143,6 @@ function ToCard(
         commentsCount: 0,
         createdAt: issue.createdAt ?? new Date().toISOString(),
         priority: "medium",
-        reporter: ToUser(issue.reporter),
         comments: [],
         activity: [],
     };
@@ -152,7 +152,7 @@ export function MapIssuesToBoard(
     title: string,
     description: string,
     configuredColumns: BoardColumnDefinitionModel[],
-    issues: ExternalIssueModel[],
+    issues: BoardIssueSummaryModel[],
     sourceNameById: Record<string, string> = {},
 ): KanbanBoardModel {
     const columnsById: Record<string, KanbanColumnModel> = {};

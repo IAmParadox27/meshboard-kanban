@@ -6,7 +6,7 @@ using Meshboard.Plugin.Sources;
 
 namespace Meshboard.Plugin.Fider
 {
-    public class FiderIssueSourcePlugin : IIssueSourcePlugin
+    public class FiderIssueSourcePlugin : IIssueSourcePlugin, IDirectIssueDetailsSourcePlugin 
     {
         private const string c_postsPath = "api/v1/posts?view=all&limit=100";
 
@@ -131,6 +131,40 @@ namespace Meshboard.Plugin.Fider
             };
         }
 
+        public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
+            SourceDefinitionModel source,
+            string externalId,
+            CancellationToken cancellationToken = default)
+        {
+            FiderSourceConfig config = GetConfig(source);
+            HttpClient client = CreateClient(config);
+
+            FiderPostResponse? post = await TryGetFromJsonAsync<FiderPostResponse>(
+                client,
+                $"api/v1/posts/{Uri.EscapeDataString(externalId)}",
+                cancellationToken);
+
+            if (post == null)
+            {
+                return null;
+            }
+
+            List<FiderCommentResponse>? comments = await TryGetFromJsonAsync<List<FiderCommentResponse>>(
+                client,
+                $"api/v1/posts/{Uri.EscapeDataString(externalId)}/comments",
+                cancellationToken);
+
+            ExternalIssue mappedIssue = MapIssue(source, config, post);
+            IReadOnlyList<ExternalIssueComment> mappedComments = BuildComments(post, comments ?? []);
+
+            return new ExternalIssueDetails
+            {
+                Issue = mappedIssue,
+                Comments = mappedComments,
+                Activity = BuildActivity(mappedIssue, post, comments ?? []),
+            };
+        }
+        
         private HttpClient CreateClient(FiderSourceConfig config)
         {
             HttpClient client = m_httpClientFactory.CreateClient();
@@ -163,6 +197,7 @@ namespace Meshboard.Plugin.Fider
             return new ExternalIssue
             {
                 ExternalId = issue.Id.ToString(),
+                DetailsLookupKey = issue.Number.ToString(),
                 SourceKey = source.Id.ToString(),
                 IssueNumber = issue.Number.ToString(),
                 Title = issue.Title,

@@ -9,8 +9,27 @@
     meshboardDisplayName?: string | null;
 };
 
+export type BoardIssueSummaryModel = {
+    externalId: string;
+    detailsLookupKey: string;
+    issueNumber: string;
+    sourceKey: string;
+    sourceName?: string | null;
+    title: string;
+    descriptionPreview?: string | null;
+    status: string;
+    url?: string | null;
+    assignee?: ExternalIssueActorModel | null;
+    sourceColumn?: string | null;
+    boardColumnId?: string | null;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+    labels: string[];
+};
+
 export type ExternalIssueModel = {
     externalId: string;
+    detailsLookupKey: string;
     issueNumber: string;
     sourceKey: string;
     sourceName?: string | null;

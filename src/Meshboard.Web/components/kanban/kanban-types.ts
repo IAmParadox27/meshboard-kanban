@@ -25,6 +25,7 @@ export type KanbanCardModel = {
     id: string;
     sourceId: string;
     externalId: string;
+    detailsLookupKey: string;
     number: string;
     title: string;
     description: string;

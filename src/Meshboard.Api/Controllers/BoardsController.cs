@@ -56,12 +56,12 @@ namespace Meshboard.Api.Controllers
             return Ok(board);
         }
 
-        [HttpGet("{id:guid}/issues/{sourceId:guid}/{externalId}")]
+        [HttpGet("{id:guid}/issues/{sourceId:guid}/{detailsLookupKey}")]
         [AllowAnonymous]
         public async Task<ActionResult<ExternalIssueDetails>> GetBoardIssueDetails(
             Guid id,
             Guid sourceId,
-            string externalId,
+            string detailsLookupKey,
             [FromServices] IBoardProvider boardProvider,
             [FromServices] IExternalIssueProvider externalIssueProvider,
             CancellationToken cancellationToken = default)
@@ -75,26 +75,26 @@ namespace Meshboard.Api.Controllers
             {
                 return NotFound();
             }
-
-            BoardDetailsModel? board = await boardProvider.GetBoardAsync(id, cancellationToken);
-
-            if (board == null)
-            {
-                return NotFound();
-            }
-
-            bool issueIsOnBoard = board.Issues.Any(
-                issue => string.Equals(issue.SourceKey, sourceId.ToString(), StringComparison.OrdinalIgnoreCase)
-                      && string.Equals(issue.ExternalId, externalId, StringComparison.OrdinalIgnoreCase));
-
-            if (!issueIsOnBoard)
-            {
-                return NotFound();
-            }
+            //
+            // BoardDetailsModel? board = await boardProvider.GetBoardAsync(id, cancellationToken);
+            //
+            // if (board == null)
+            // {
+            //     return NotFound();
+            // }
+            //
+            // bool issueIsOnBoard = board.Issues.Any(
+            //     issue => string.Equals(issue.SourceKey, sourceId.ToString(), StringComparison.OrdinalIgnoreCase)
+            //              && string.Equals(issue.DetailsLookupKey, detailsLookupKey, StringComparison.OrdinalIgnoreCase));
+            //
+            // if (!issueIsOnBoard)
+            // {
+            //     return NotFound();
+            // }
 
             ExternalIssueDetails? details = await externalIssueProvider.GetIssueDetailsAsync(
                 sourceId,
-                externalId,
+                detailsLookupKey,
                 cancellationToken);
 
             if (details == null)

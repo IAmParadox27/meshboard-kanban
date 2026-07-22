@@ -108,7 +108,7 @@ export function KanbanCardDetailsSheet(
 
             try
             {
-                const details = await apiClient.GetBoardIssueDetails(boardId, card!.sourceId, card!.externalId);
+                const details = await apiClient.GetBoardIssueDetails(boardId, card!.sourceId, card!.detailsLookupKey);
 
                 if (isCancelled)
                 {
@@ -165,7 +165,7 @@ export function KanbanCardDetailsSheet(
 
         try
         {
-            const details = await apiClient.GetBoardIssueDetails(boardId, card.sourceId, card.externalId);
+            const details = await apiClient.GetBoardIssueDetails(boardId, card.sourceId, card.detailsLookupKey);
 
             setDetailsByCardId((current) => ({
                 ...current,
