@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Web;
 using Meshboard.Core.Issues;
 using Meshboard.Core.Sources;
 using Meshboard.Plugin.Sources;
@@ -114,46 +115,34 @@ namespace Meshboard.Plugin.GitHub
             ExternalIssue issue,
             CancellationToken cancellationToken = default)
         {
-            GitHubSourceConfig config = GetConfig(source);
-            HttpClient client = CreateClient(config);
-
-            IReadOnlyList<GitHubProjectResponse> projectIssues = await GetProjectIssuesAsync(client, config, cancellationToken);
-            GitHubProjectResponse? projectIssue = projectIssues.FirstOrDefault(
-                x => string.Equals(x.Issue?.Id.ToString(), issue.ExternalId, StringComparison.OrdinalIgnoreCase));
-
-            if (projectIssue?.Issue == null || projectIssue.Issue.PullRequest != null)
-            {
-                return CreateFallbackDetails(issue);
-            }
-
-            IReadOnlyList<GitHubIssueCommentResponse> comments = await TryGetPagedFromJsonAsync<GitHubIssueCommentResponse>(
-                client,
-                AppendPerPage(projectIssue.Issue.CommentsUrl),
+            ExternalIssueDetails? details = await GetIssueDetailsAsync(
+                source,
+                issue.DetailsLookupKey,
                 cancellationToken);
 
-            ExternalIssue mappedIssue = MapIssue(source, config, projectIssue);
-
-            return new ExternalIssueDetails
-            {
-                Issue = mappedIssue,
-                Comments = comments
-                    .Select(MapComment)
-                    .ToArray(),
-                Activity = BuildActivity(mappedIssue, projectIssue.Issue, comments),
-            };
+            return details ?? CreateFallbackDetails(issue);
         }
         
         public async Task<ExternalIssueDetails?> GetIssueDetailsAsync(
             SourceDefinitionModel source,
-            string externalId,
+            string detailsLookupKey,
             CancellationToken cancellationToken = default)
         {
             GitHubSourceConfig config = GetConfig(source);
             HttpClient client = CreateClient(config);
 
-            IReadOnlyList<GitHubProjectResponse> projectIssues = await GetProjectIssuesAsync(client, config, cancellationToken);
-            GitHubProjectResponse? projectIssue = projectIssues.FirstOrDefault(
-                x => string.Equals(x.Issue?.Id.ToString(), externalId, StringComparison.OrdinalIgnoreCase));
+            if (detailsLookupKey.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                detailsLookupKey = HttpUtility.UrlDecode(detailsLookupKey);
+            }
+            
+            long? statusFieldId = await GetStatusFieldIdAsync(client, config, cancellationToken);
+            string requestPath = AppendProjectItemFields(detailsLookupKey, statusFieldId);
+
+            GitHubProjectResponse? projectIssue = await TryGetFromJsonAsync<GitHubProjectResponse>(
+                client,
+                requestPath,
+                cancellationToken);
 
             if (projectIssue?.Issue == null || projectIssue.Issue.PullRequest != null)
             {
@@ -193,8 +182,8 @@ namespace Meshboard.Plugin.GitHub
 
             return client;
         }
-
-        private static async Task<IReadOnlyList<GitHubProjectResponse>> GetProjectIssuesAsync(
+        
+        private static async Task<long?> GetStatusFieldIdAsync(
             HttpClient client,
             GitHubSourceConfig config,
             CancellationToken cancellationToken)
@@ -207,9 +196,48 @@ namespace Meshboard.Plugin.GitHub
                 fieldsRequestPath,
                 cancellationToken);
 
-            long? statusFieldId = fields?
+            return fields?
                 .FirstOrDefault(x => string.Equals(x.Name, config.StatusFieldName, StringComparison.OrdinalIgnoreCase))?
                 .Id;
+        }
+        
+        private static string AppendProjectItemFields(
+            string itemUrl,
+            long? statusFieldId)
+        {
+            if (string.IsNullOrWhiteSpace(itemUrl) || statusFieldId == null)
+            {
+                return itemUrl;
+            }
+
+            string separator = itemUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
+            return $"{itemUrl}{separator}fields[]={statusFieldId.Value}";
+        }
+        
+        private static string GetDetailsLookupKey(GitHubProjectResponse project)
+        {
+            if (!string.IsNullOrWhiteSpace(project.ItemUrl))
+            {
+                return project.ItemUrl;
+            }
+
+            if (!string.IsNullOrWhiteSpace(project.Issue?.HtmlUrl))
+            {
+                return project.Issue.HtmlUrl;
+            }
+
+            return project.Issue?.Id.ToString() ?? string.Empty;
+        }
+        
+        private static async Task<IReadOnlyList<GitHubProjectResponse>> GetProjectIssuesAsync(
+            HttpClient client,
+            GitHubSourceConfig config,
+            CancellationToken cancellationToken)
+        {
+            long? statusFieldId = await GetStatusFieldIdAsync(
+                client,
+                config,
+                cancellationToken);
 
             string requestPath =
                 $"users/{Uri.EscapeDataString(config.Owner)}/projectsV2/{Uri.EscapeDataString(config.ProjectId!)}/items?per_page=100";
@@ -243,7 +271,7 @@ namespace Meshboard.Plugin.GitHub
             return new ExternalIssue
             {
                 ExternalId = project.Issue?.Id.ToString() ?? "No issue id",
-                DetailsLookupKey = project.Issue?.Id.ToString() ?? "No issue id",
+                DetailsLookupKey = GetDetailsLookupKey(project),
                 SourceKey = source.Id.ToString(),
                 IssueNumber = project.Issue?.Number.ToString() ?? "No issue number",
                 Title = project.Issue?.Title ?? "No title",
